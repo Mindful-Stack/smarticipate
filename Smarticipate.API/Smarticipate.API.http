@@ -1,0 +1,6 @@
+@Smarticipate.API_HostAddress = http://localhost:5204
+
+GET {{Smarticipate.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
