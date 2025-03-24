@@ -69,6 +69,7 @@ if (app.Environment.IsDevelopment())
     .WithTags("Identity");
 }
 
+app.UseAuthentication();
 // app.UseAuthorization();
 
 app.Run();

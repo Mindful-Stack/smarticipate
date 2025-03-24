@@ -1,0 +1,44 @@
+﻿@page "/Login"
+@using System.Net
+@inject CookieAuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Navigation
+@inject HttpClient Http;
+
+<h3>Login</h3>
+
+<EditForm Model="credentials" OnValidSubmit="LoginUser">
+    <div>
+        <label for="">Username:</label>
+        <InputText @bind-value="credentials.Username"/>
+    </div>
+    
+    <div>
+        <label for="">Password:</label>
+        <InputText @bind-value="credentials.Password" type="password"/>
+    </div>
+
+    <button type="submit">Login</button>
+</EditForm>
+
+
+@code {
+    private LoginModel credentials = new();
+
+    private async Task LoginUser()
+    {
+        var response = await Http.PostAsJsonAsync("api/identity/login", credentials);
+
+        if (response.IsSuccessStatusCode)
+        {
+            var user = await response.Content.ReadFromJsonAsync<CookieAuthenticationStateProvider.AuthenticatedUser>();
+            AuthStateProvider.NotifyUserLoggedIn(user.Username, user.Email);
+            Navigation.NavigateTo("/");
+        }
+    }
+
+    public class LoginModel
+    {
+        public string Username { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+    }
+}
