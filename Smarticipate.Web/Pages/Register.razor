@@ -1,0 +1,90 @@
+﻿@page "/Register"
+@using System.ComponentModel.DataAnnotations
+@inject HttpClient Http
+
+
+<PageTitle>Home</PageTitle>
+
+<h3>Register</h3>
+<EditForm Model="newUser" OnValidSubmit="RegisterUser">
+    <DataAnnotationsValidator/>
+    <ValidationSummary/>
+
+    <div>
+        <label for="email">Email:</label>
+        <InputText id="email" @bind-Value="newUser.Email"/>
+        <ValidationMessage For="@(() => newUser.Email)"/>
+    </div>
+
+    <div>
+        <label for="password">Password:</label>
+        <InputText id="password" @bind-Value="newUser.Password" type="password"/>
+        <ValidationMessage For="@(() => newUser.Password)"/>
+    </div>
+
+    <div>
+        <label for="confirmPassword">Confirm Password:</label>
+        <InputText id="confirmPassword" @bind-Value="confirmPassword" type="password"/>
+        <ValidationMessage For="@(() => confirmPassword)"/>
+    </div>
+
+    <button type="submit">Register</button>
+</EditForm>
+
+@if (!string.IsNullOrEmpty(message))
+{
+    <p style="color: red">@message</p>
+}
+
+@code{
+    private string confirmPassword = "";
+    private string? message;
+    private RegisterModel newUser = new();
+
+    private bool isPasswordValid()
+    {
+        return !string.IsNullOrEmpty(newUser.Password) && newUser.Password == confirmPassword;
+    }
+
+    private async Task RegisterUser()
+    {
+        if (isPasswordValid())
+        {
+            try
+            {
+                var response = await Http.PostAsJsonAsync(
+                    "api/identity/register",
+                    new
+                    {
+                        email = newUser.Email,
+                        password = newUser.Password
+                    });
+
+                if (response.IsSuccessStatusCode)
+                {
+                    message = "Registration successful!";
+                }
+                else
+                {
+                    message = "Registration failed. Please check the details and try again";
+                }
+            }
+            catch (Exception ex)
+            {
+                message = $"Error: {ex.Message}";
+            }
+        }
+        else
+        {
+            message = "Invalid password or passwords do not match";
+        }
+    }
+
+    public class RegisterModel
+    {
+        [Required] [EmailAddress] public string Email { get; set; } = string.Empty;
+
+        [Required] public string Password { get; set; } = string.Empty;
+    }
+
+}
