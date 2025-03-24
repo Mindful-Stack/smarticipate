@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
@@ -10,8 +11,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<UserDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-builder.Services.AddDbContext<SmarticipateApiDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+// builder.Services.AddDbContext<SmarticipateApiDbContext>(options =>
+//     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 // builder.Services.AddControllers();
 
 builder.Services.AddIdentityApiEndpoints<User>(options =>
@@ -22,6 +23,7 @@ builder.Services.AddIdentityApiEndpoints<User>(options =>
     })
     .AddEntityFrameworkStores<UserDbContext>();
 
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme).AddCookie();
 
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
@@ -33,12 +35,17 @@ if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
     app.MapScalarApiReference();
+
+    app.MapGroup("/api/identity")
+    .MapIdentityApi<User>()
+    .WithTags("Identity");
 }
+
 
 app.UseHttpsRedirection();
 
-app.UseAuthorization();
+// app.UseAuthorization();
 
-app.MapControllers();
+// app.MapControllers();
 
 app.Run();
