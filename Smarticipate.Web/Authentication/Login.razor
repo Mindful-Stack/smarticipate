@@ -1,5 +1,4 @@
 ﻿@page "/Login"
-@using System.Net
 @inject CookieAuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Navigation
 @inject HttpClient Http;
@@ -9,9 +8,9 @@
 <EditForm Model="credentials" OnValidSubmit="LoginUser">
     <div>
         <label for="">Username:</label>
-        <InputText @bind-value="credentials.Username"/>
+        <InputText @bind-value="credentials.Email"/>
     </div>
-    
+
     <div>
         <label for="">Password:</label>
         <InputText @bind-value="credentials.Password" type="password"/>
@@ -20,25 +19,37 @@
     <button type="submit">Login</button>
 </EditForm>
 
-
 @code {
+
     private LoginModel credentials = new();
+    
 
     private async Task LoginUser()
     {
         var response = await Http.PostAsJsonAsync("api/identity/login", credentials);
 
-        if (response.IsSuccessStatusCode)
+        if (!response.IsSuccessStatusCode)
+        {
+            
+            // Handle login error, e.g., display an error message to the user
+            Console.WriteLine("Login failed. Status code: {0}", response.StatusCode); 
+            
+        }
+        else
         {
             var user = await response.Content.ReadFromJsonAsync<CookieAuthenticationStateProvider.AuthenticatedUser>();
             AuthStateProvider.NotifyUserLoggedIn(user.Username, user.Email);
+            
             Navigation.NavigateTo("/");
         }
     }
 
     public class LoginModel
     {
-        public string Username { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
         public string Password { get; set; } = string.Empty;
+        public string TwoFactorCode { get; set; } = null;
+        public string TwoFactorRecoveryCode { get; set; } = null;
     }
+
 }

@@ -13,7 +13,7 @@ builder.Services.AddAuthorizationCore();
 builder.Services.AddScoped<AuthenticationStateProvider, CookieAuthenticationStateProvider>();
 
 builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri("https://localhost:44397/") });
-// builder.Services.AddScoped<CookieAuthenticationStateProvider>();
+builder.Services.AddScoped<CookieAuthenticationStateProvider>();
 // builder.Services.AddScoped<AuthenticationState>();
 
 builder.Services.AddOptions();
