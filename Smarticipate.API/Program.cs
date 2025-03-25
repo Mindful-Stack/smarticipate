@@ -1,12 +1,8 @@
-using System.Security.Claims;
 using System.Text.Json.Serialization;
-using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 using Scalar.AspNetCore;
-using Smarticipate.API.Data;
 using Smarticipate.API.Data.Identity;
 using JsonOptions = Microsoft.AspNetCore.Http.Json.JsonOptions;
 
