@@ -1,5 +1,6 @@
 ﻿using System.Net.Http.Json;
 using System.Security.Claims;
+using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Components.Authorization;
 
@@ -119,6 +120,14 @@ public class CookieAuthenticationStateProvider(
             Succeeded = false,
             ErrorList = ["Invalid email and/or password"]
         };
+    }
+
+    public async Task LogoutAsync()
+    {
+        const string Empty = "{}";
+        var emptyContent = new StringContent(Empty, Encoding.UTF8, "application/json");
+        await httpClient.PostAsync("logout", emptyContent);
+        NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
     }
 
     public void NotifyUserLoggedIn(string username, string email)

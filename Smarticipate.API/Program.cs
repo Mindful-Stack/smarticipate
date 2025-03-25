@@ -1,13 +1,14 @@
 using System.Security.Claims;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.Http.Json;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Scalar.AspNetCore;
 using Smarticipate.API.Data;
 using Smarticipate.API.Data.Identity;
+using JsonOptions = Microsoft.AspNetCore.Http.Json.JsonOptions;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -105,5 +106,17 @@ if (app.Environment.IsDevelopment())
     app.MapScalarApiReference();
 
 }
+
+app.MapPost("/api/identity/logout", async (SignInManager<User> signInManager, [FromBody] object empty) =>
+{
+    if (empty is not null)
+    {
+        await signInManager.SignOutAsync();
+
+        return Results.Ok();
+    }
+
+    return Results.Unauthorized();
+}).RequireAuthorization();
 
 app.Run();

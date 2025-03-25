@@ -1,6 +1,7 @@
 ﻿@page "/Register"
 @using System.ComponentModel.DataAnnotations
-@inject IAccountManagement AuthStateProvider
+@using Smarticipate.Web.Authentication
+@inject IAccountManagement Account
 @inject NavigationManager Navigation
 
 <PageTitle>Home</PageTitle>
@@ -50,11 +51,11 @@
     private async Task RegisterUser()
     {
         if (IsPasswordValid()) ;
-        var response = await AuthStateProvider.RegisterAsync(_newUser.Email, _newUser.Password);
+        var response = await Account.RegisterAsync(_newUser.Email, _newUser.Password);
 
         if (response.Succeeded)
         {
-            var loginResponse = await AuthStateProvider.LoginAsync(_newUser.Email, _newUser.Password);
+            var loginResponse = await Account.LoginAsync(_newUser.Email, _newUser.Password);
             if (loginResponse.Succeeded)
             {
                 Navigation.NavigateTo("/");
