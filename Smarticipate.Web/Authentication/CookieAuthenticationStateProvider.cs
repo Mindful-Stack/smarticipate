@@ -1,66 +1,147 @@
 ﻿using System.Net.Http.Json;
 using System.Security.Claims;
+using System.Text.Json;
 using Microsoft.AspNetCore.Components.Authorization;
 
 namespace Smarticipate.Web.Authentication;
 
-public class CookieAuthenticationStateProvider : AuthenticationStateProvider
+public class CookieAuthenticationStateProvider(
+    IHttpClientFactory httpClientFactory,
+    ILogger<CookieAuthenticationStateProvider> logger)
+    : AuthenticationStateProvider, IAccountManagement
 {
-    private readonly HttpClient _httpClient;
     private readonly AuthenticationState _anonymous;
 
-    public CookieAuthenticationStateProvider(HttpClient httpClient)
-    {
-        _httpClient = httpClient;
-        _anonymous = new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity()));
-    }
+    private readonly JsonSerializerOptions jsonSerializerOptions =
+        new()
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        };
+
+    private readonly HttpClient httpClient = httpClientFactory.CreateClient("Auth");
+    private bool authenticated = false;
+    private readonly ClaimsPrincipal unauthenticated = new(new ClaimsIdentity());
 
     public override async Task<AuthenticationState> GetAuthenticationStateAsync()
     {
+        authenticated = false;
+        var user = unauthenticated;
         try
         {
-            var response = await _httpClient.GetAsync("api/identity/manage/info");
+            var userResponse = await httpClient.GetAsync("manage/info");
+            userResponse.EnsureSuccessStatusCode();
 
-            if (!response.IsSuccessStatusCode)
-                return _anonymous;
+            var userJson = await userResponse.Content.ReadAsStringAsync();
+            var userInfo = JsonSerializer.Deserialize<AuthenticatedUser>(userJson, jsonSerializerOptions);
 
-            var user = await response.Content.ReadFromJsonAsync<AuthenticatedUser>();
-
-            var identity = new ClaimsIdentity(new[]
+            if (userInfo != null)
             {
-                new Claim(ClaimTypes.Name, user.Username),
-                new Claim(ClaimTypes.Email, user.Email)
-            }, "cookie");
+                var claims = new List<Claim>
+                {
+                    new(ClaimTypes.Name, userInfo.Email),
+                    new(ClaimTypes.Email, userInfo.Email)
+                };
 
-            var claimsPrincipal = new ClaimsPrincipal(identity);
-            return new AuthenticationState(claimsPrincipal);
+                claims.AddRange(
+                    userInfo.Claims.Where(c => c.Key != ClaimTypes.Name && c.Key != ClaimTypes.Email)
+                        .Select(c => new Claim(c.Key, c.Value)));
+                var id = new ClaimsIdentity(claims, nameof(CookieAuthenticationStateProvider));
+                user = new ClaimsPrincipal(id);
+                authenticated = true;
+            }
         }
-        catch
+        catch (Exception ex)
         {
-            return _anonymous;
+            logger.LogError(ex, "App error");
         }
+
+        // return the state
+        return new AuthenticationState(user);
+    }
+
+    public async Task<FormResult> RegisterAsync(string email, string password)
+    {
+        string[] defaultDetail = ["An unknown error prevented registration from succeeding."];
+        try
+        {
+            var result = await httpClient.PostAsJsonAsync("register", new
+            {
+                email,
+                password
+            });
+
+            if (result.IsSuccessStatusCode)
+            {
+                return new FormResult { Succeeded = true };
+            }
+
+            return new FormResult
+            {
+                Succeeded = false,
+                ErrorList = defaultDetail
+            };
+        }
+        catch (Exception e)
+        {
+            logger.LogError("App error");
+        }
+
+        return new FormResult
+        {
+            Succeeded = false,
+            ErrorList = defaultDetail
+        };
+    }
+
+    public async Task<FormResult> LoginAsync(string email, string password)
+    {
+        try
+        {
+            var result = await httpClient.PostAsJsonAsync("login?useCookies=true", new
+            {
+                email,
+                password
+            });
+
+            if (result.IsSuccessStatusCode)
+            {
+                NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
+                return new FormResult { Succeeded = true };
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "App error");
+        }
+
+        return new FormResult
+        {
+            Succeeded = false,
+            ErrorList = ["Invalid email and/or password"]
+        };
     }
 
     public void NotifyUserLoggedIn(string username, string email)
     {
-        var identity = new ClaimsIdentity(new[]
-        {
-            new Claim(ClaimTypes.Name, username),
-            new Claim(ClaimTypes.Email, email)
-        }, "cookie");
-
-        var claimsPrincipal = new ClaimsPrincipal(identity);
-        NotifyAuthenticationStateChanged(Task.FromResult(new AuthenticationState(claimsPrincipal)));
+        NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
+        Console.WriteLine("Authenticated username: " + username);
     }
 
     public void NotifyUserLoggedOut()
     {
-        NotifyAuthenticationStateChanged(Task.FromResult(_anonymous));
+        NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
     }
-    
+
     public class AuthenticatedUser
     {
         public string Username { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
+        public Dictionary<string, string> Claims { get; set; } = [];
+    }
+
+    public class FormResult
+    {
+        public bool Succeeded { get; set; }
+        public string[] ErrorList { get; set; } = [];
     }
 }

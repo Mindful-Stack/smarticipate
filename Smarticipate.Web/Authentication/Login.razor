@@ -1,19 +1,18 @@
 ﻿@page "/Login"
-@inject CookieAuthenticationStateProvider AuthStateProvider
+@inject IAccountManagement AuthStateProvider
 @inject NavigationManager Navigation
-@inject HttpClient Http;
 
 <h3>Login</h3>
 
-<EditForm Model="credentials" OnValidSubmit="LoginUser">
+<EditForm Model="_credentials" OnValidSubmit="LoginUser">
     <div>
         <label for="">Username:</label>
-        <InputText @bind-value="credentials.Email"/>
+        <InputText @bind-value="_credentials.Email"/>
     </div>
 
     <div>
         <label for="">Password:</label>
-        <InputText @bind-value="credentials.Password" type="password"/>
+        <InputText @bind-value="_credentials.Password" type="password"/>
     </div>
 
     <button type="submit">Login</button>
@@ -21,25 +20,15 @@
 
 @code {
 
-    private LoginModel credentials = new();
-    
+    private LoginModel _credentials = new();
 
     private async Task LoginUser()
     {
-        var response = await Http.PostAsJsonAsync("api/identity/login", credentials);
+        var response = await AuthStateProvider.LoginAsync(_credentials.Email, _credentials.Password);
 
-        if (!response.IsSuccessStatusCode)
+        if (response.Succeeded)
         {
-            
-            // Handle login error, e.g., display an error message to the user
-            Console.WriteLine("Login failed. Status code: {0}", response.StatusCode); 
-            
-        }
-        else
-        {
-            var user = await response.Content.ReadFromJsonAsync<CookieAuthenticationStateProvider.AuthenticatedUser>();
-            AuthStateProvider.NotifyUserLoggedIn(user.Username, user.Email);
-            
+            Console.WriteLine("Login successful!");
             Navigation.NavigateTo("/");
         }
     }
@@ -48,8 +37,6 @@
     {
         public string Email { get; set; } = string.Empty;
         public string Password { get; set; } = string.Empty;
-        public string TwoFactorCode { get; set; } = null;
-        public string TwoFactorRecoveryCode { get; set; } = null;
     }
 
 }
