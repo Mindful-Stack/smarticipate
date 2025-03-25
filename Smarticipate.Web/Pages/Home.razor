@@ -1,28 +1,25 @@
 ﻿@page "/"
 @using Smarticipate.Web.Authentication
-@inject IAccountManagement Account
-@inject NavigationManager Navigation
+@* @inject IAccountManagement Account *@
+@* @inject NavigationManager Navigation *@
 
-<h3>Welcome to Smarticipate!</h3>
+<div class="hero">
+<h1>Welcome to Smarticipate!</h1>
 <AuthorizeView>
     <Authorized>
-        <p>You are logged in as @context.User.Identity?.Name</p>
-        <button onclick="@LogoutUser">Log out</button>
-    </Authorized>
 
+    </Authorized>
     <NotAuthorized>
-        <a href="/Register">Register</a>
-        <a href="/Login">Login</a>        
+        <h3>Are you an educator? Start by registering or sign in if you already have one</h3>
+
+        <NavLink class="link" href="/Register">Register</NavLink>
+        <NavLink class="link" href="/Login">Login</NavLink>
     </NotAuthorized>
 </AuthorizeView>
-
-@code{
-
-    private async Task LogoutUser()
-    {
-        await Account.LogoutAsync();
-        Navigation.NavigateTo("/");
-    }
+    
+    <h3>Are you a student? Join a live session here!</h3>
+    <NavLink class="link" href="/Student">Join session</NavLink>
+</div>
 
 
-}
+

@@ -1,3 +1,37 @@
-﻿@inherits LayoutComponentBase
+﻿@using Smarticipate.Web.Authentication
+@inherits LayoutComponentBase
+@inject IAccountManagement Account
+@inject NavigationManager Navigation
 
-@Body
+<nav class="navbar">
+    <div class="navElement navBrand">
+        <img src="./images/smarticipate-logo.png" alt="Smarticipate logo" height="50px">
+    <h1 class="title">Smarticipate</h1></div>
+
+    <div class="navElement navUser">
+        <AuthorizeView>
+            <Authorized>
+                <p>Welcome, @context.User.Identity?.Name</p>
+                <button class="link" onclick="@LogoutUser">Log out</button>
+            </Authorized>
+            <NotAuthorized>
+                
+            </NotAuthorized>
+        </AuthorizeView>
+    </div>
+</nav>
+
+<main>
+    @Body
+
+</main>
+
+@code{
+
+    private async Task LogoutUser()
+    {
+        await Account.LogoutAsync();
+        Navigation.NavigateTo("/");
+    }
+
+}

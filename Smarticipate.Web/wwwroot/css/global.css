@@ -1,0 +1,203 @@
+﻿:root {
+    --beige: #f2e9e1;
+    --dark: #575279;
+    --gold: #f6c177;
+    --orange: #d7827e;
+    --purple: #c4a7e7;
+    --red: #b4637a;
+    --teal: #286983;
+
+    --space-mono: "Space Mono", sans-serif;
+    --inter: "Inter", sans-serif;
+
+    /*Background gradient*/
+    --g4-1-x-position: 87.23379629629622%;
+    --g4-1-y-position: 83.08008213552361%;
+    --g4-2-x-position: 18.900462962962923%;
+    --g4-2-y-position: 78.15195071868584%;
+    --g4-3-x-position: 88.62268518518512%;
+    --g4-3-y-position: 15.071868583162217%;
+    --g4-4-x-position: 11.712962962962967%;
+    --g4-4-y-position: 16.550308008213555%;
+}
+
+* {
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+}
+
+html {
+        font-family: var(--inter);
+    color: var(--dark);
+
+    /*Background gradient*/
+    background: radial-gradient(100% 100% at var(--g4-1-x-position) var(--g4-1-y-position), var(--purple) -100%, transparent),
+    radial-gradient(100% 100% at var(--g4-2-x-position) var(--g4-2-y-position), var(--teal) -100%, transparent),
+    radial-gradient(100% 100% at var(--g4-3-x-position) var(--g4-3-y-position), var(--gold) -100%, transparent),
+    radial-gradient(100% 100% at var(--g4-4-x-position) var(--g4-4-y-position), var(--red) -100%, transparent), var(--beige);
+    animation-name: g-4;
+    animation-iteration-count: infinite;
+    animation-duration: 20s;
+    transition-timing-function: ease-in-out;
+}
+
+body{
+    height: 100vh;
+    width: 100vw;
+}
+
+#app{
+    display: grid;
+    grid-template-rows: 5rem 1fr;
+    position: relative;
+}
+
+/*Navigation*/
+.navbar {
+    grid-row: 1;
+    display: flex;
+    position: absolute;
+    height: 5rem;
+    width: 100%;
+    font-size: 1rem;
+    font-weight: bold;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 1.5rem;
+}
+
+.navElement{
+    display: flex;
+    align-items: center;
+}
+
+.navBrand{
+    gap: 1rem;
+}
+
+.navUser{
+    gap: 2rem;
+}
+
+main{
+    grid-row: 2;
+    width: 100vw;
+    padding: 0 1.5rem;    
+}
+
+
+
+.btn {
+}
+
+.link{
+    background-color: transparent;
+    border: none;
+    color: var(--dark);
+    font-family: var(--inter);
+    font-weight: bold;
+    font-size: 1rem;
+    text-decoration: underline;
+    
+    &:hover{
+        cursor: pointer;
+        text-decoration: none;
+    }
+    
+    &:visited{
+        color: var(--dark);
+    }
+}
+
+.hero{
+grid-template-rows: subgrid;    position: absolute;
+        align-content: center;
+    justify-items: center ;
+    height: 100%;
+}
+
+
+
+/*Background gradient animation*/
+@property --g4-1-x-position {
+    syntax: "<percentage>";
+    inherits: false;
+    initial-value: 87.23379629629622%;
+}
+
+@property --g4-1-y-position {
+    syntax: "<percentage>";
+    inherits: false;
+    initial-value: 83.08008213552361%;
+}
+
+@property --g4-2-x-position {
+    syntax: "<percentage>";
+    inherits: false;
+    initial-value: 18.900462962962923%;
+}
+
+@property --g4-2-y-position {
+    syntax: "<percentage>";
+    inherits: false;
+    initial-value: 78.15195071868584%;
+}
+
+@property --g4-3-x-position {
+    syntax: "<percentage>";
+    inherits: false;
+    initial-value: 88.62268518518512%;
+}
+
+@property --g4-3-y-position {
+    syntax: "<percentage>";
+    inherits: false;
+    initial-value: 15.071868583162217%;
+}
+
+@property --g4-4-x-position {
+    syntax: "<percentage>";
+    inherits: false;
+    initial-value: 11.712962962962967%;
+}
+
+@property --g4-4-y-position {
+    syntax: "<percentage>";
+    inherits: false;
+    initial-value: 16.550308008213555%;
+}
+
+@keyframes g-4 {
+    25% {
+        --g4-1-x-position: 88.11342592592592%;
+        --g4-1-y-position: 17.74127310061603%;
+        --g4-2-x-position: 86.99074074074056%;
+        --g4-2-y-position: 80.29774127310063%;
+        --g4-3-x-position: 11.157407407407389%;
+        --g4-3-y-position: 18.80903490759754%;
+        --g4-4-x-position: 15.543981481481403%;
+        --g4-4-y-position: 78.31622176591377%;
+    }
+    50% {
+        --g4-1-x-position: 13.888888888888834%;
+        --g4-1-y-position: 18.891170431211524%;
+        --g4-2-x-position: 85.20833333333329%;
+        --g4-2-y-position: 17.874743326488705%;
+        --g4-3-x-position: 15%;
+        --g4-3-y-position: 85%;
+        --g4-4-x-position: 100%;
+        --g4-4-y-position: 100%;
+    }
+    75% {
+        --g4-1-x-position: 17.071759259259224%;
+        --g4-1-y-position: 75.56468172484597%;
+        --g4-2-x-position: 13.136574074074%;
+        --g4-2-y-position: 20.739219712525706%;
+        --g4-3-x-position: 84.25925925925932%;
+        --g4-3-y-position: 74.94866529774129%;
+        --g4-4-x-position: 81.82870370370377%;
+        --g4-4-y-position: 16.837782340862468%;
+    }
+}
+
