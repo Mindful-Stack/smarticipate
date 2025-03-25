@@ -1,0 +1,43 @@
+﻿@page "/Login"
+@using Smarticipate.Web.Authentication
+@inject IAccountManagement Account
+@inject NavigationManager Navigation
+
+<h3>Login</h3>
+
+<EditForm Model="_credentials" OnValidSubmit="LoginUser">
+    <div>
+        <label for="">Username:</label>
+        <InputText @bind-value="_credentials.Email"/>
+    </div>
+
+    <div>
+        <label for="">Password:</label>
+        <InputText @bind-value="_credentials.Password" type="password"/>
+    </div>
+
+    <button type="submit">Login</button>
+</EditForm>
+
+@code {
+
+    private LoginModel _credentials = new();
+
+    private async Task LoginUser()
+    {
+        var response = await Account.LoginAsync(_credentials.Email, _credentials.Password);
+
+        if (response.Succeeded)
+        {
+            Console.WriteLine("Login successful!");
+            Navigation.NavigateTo("/");
+        }
+    }
+
+    public class LoginModel
+    {
+        public string Email { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+    }
+
+}

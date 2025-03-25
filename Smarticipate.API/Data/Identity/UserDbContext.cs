@@ -4,4 +4,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Smarticipate.API.Data.Identity;
 
-public class UserDbContext(DbContextOptions<UserDbContext> options) : IdentityDbContext<IdentityUser>(options);
+public class UserDbContext : IdentityDbContext<User>
+{
+    public UserDbContext(DbContextOptions<UserDbContext> options) 
+        : base(options)
+    {
+    }
+}
