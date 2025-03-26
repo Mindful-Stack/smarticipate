@@ -2,53 +2,70 @@
 @inject IAccountManagement Account
 @inject NavigationManager Navigation
 
-<PageTitle>Home</PageTitle>
+<PageTitle>Register</PageTitle>
 
-<h3>Register</h3>
-<EditForm Model="_newUser" OnValidSubmit="RegisterUser">
-    <DataAnnotationsValidator/>
-    <ValidationSummary/>
+<div class="register">
+    <div class="registerContent">
+        <h2>Register</h2>
+        <EditForm class="form" Model="_newUser" OnValidSubmit="RegisterUser">
+            <DataAnnotationsValidator/>
+            <ValidationSummary/>
 
-    <div>
-        <label for="email">Email:</label>
-        <InputText id="email" @bind-Value="_newUser.Email"/>
-        <ValidationMessage For="@(() => _newUser.Email)"/>
+            <div class="formField">
+                <label for="email">Email:</label>
+                <InputText id="email" @bind-Value="_newUser.Email"/>
+                <ValidationMessage For="@(() => _newUser.Email)"/>
+            </div>
+
+            <div class="formField">
+                <label for="password">Password:</label>
+                <InputText id="password" @bind-Value="_newUser.Password" type="password"/>
+                <ValidationMessage For="@(() => _newUser.Password)"/>
+            </div>
+
+            <div class="formField">
+                <label for="confirmPassword">Confirm Password:</label>
+                <InputText id="confirmPassword" @bind-Value="_confirmPassword" type="password"/>
+                <ValidationMessage For="@(() => _confirmPassword)"/>
+            </div>
+
+            <button class="btn submitBtn" type="submit">Register</button>
+        </EditForm>
     </div>
+        @if (!string.IsNullOrEmpty(_message))
+        {
+            <p class="warning" style="color: var(--red)">@_message</p>
+        }
+</div>
 
-    <div>
-        <label for="password">Password:</label>
-        <InputText id="password" @bind-Value="_newUser.Password" type="password"/>
-        <ValidationMessage For="@(() => _newUser.Password)"/>
-    </div>
 
-    <div>
-        <label for="confirmPassword">Confirm Password:</label>
-        <InputText id="confirmPassword" @bind-Value="_confirmPassword" type="password"/>
-        <ValidationMessage For="@(() => _confirmPassword)"/>
-    </div>
-
-    <button class="btn" type="submit">Register</button>
-</EditForm>
-
-@if (!string.IsNullOrEmpty(_message))
-{
-    <p style="color: var(--red)">@_message</p>
-}
 
 @code{
     private string _confirmPassword = "";
-    private string? _message="";
+    private string? _message = "";
     private RegisterModel _newUser = new();
 
-    private bool IsPasswordValid()
+    private string IsPasswordValid()
     {
-        Console.WriteLine("Password is valid!");
-        return !string.IsNullOrEmpty(_newUser.Password) && _newUser.Password == _confirmPassword;
+        return (_newUser.Password, _confirmPassword) switch
+        {
+            var (p, c) when string.IsNullOrEmpty(p) || string.IsNullOrEmpty(c) => "Password fields cannot be empty",
+            var (p, c) when p != c => "Passwords do not match",
+            var (p, _) when p.Length < 8 => "Password must be at least 8 characters long",
+            var (p, _) when !p.Any(char.IsUpper) => "Password must contain at least one uppercase letter",
+            var (p, _) when !p.Any(char.IsDigit) => "Password must contain at least one number",
+            var (p, _) when !p.Any(ch => !char.IsLetterOrDigit(ch)) => "Password must contain at least one special character",
+            _ => string.Empty // Password is valid
+        };
     }
 
     private async Task RegisterUser()
     {
-        if (IsPasswordValid()) ;
+        string validationResult = IsPasswordValid();
+        if (!string.IsNullOrEmpty(validationResult))
+        {
+            _message = validationResult;
+        }
         var response = await Account.RegisterAsync(_newUser.Email, _newUser.Password);
 
         if (response.Succeeded)
@@ -58,8 +75,12 @@
             {
                 Navigation.NavigateTo("/");
             }
+            else
+            {
+                _message = "Login failed after successful registration";
+            }
         }
-    }
+           }
 
     public class RegisterModel
     {
