@@ -1,24 +1,38 @@
 ﻿@page "/"
-@using Smarticipate.Web.Authentication
-@* @inject IAccountManagement Account *@
-@* @inject NavigationManager Navigation *@
 
-<div class="hero">
-<h1>Welcome to Smarticipate!</h1>
-<AuthorizeView>
-    <Authorized>
+<div class="home">
+    <div class="hero">
+        <h1 class="welcome">Welcome to Smarticipate!</h1>
+        <div class="heroContent">
+            <AuthorizeView>
+                <Authorized>
 
-    </Authorized>
-    <NotAuthorized>
-        <h3>Are you an educator? Start by registering or sign in if you already have one</h3>
-
-        <NavLink class="link" href="/Register">Register</NavLink>
-        <NavLink class="link" href="/Login">Login</NavLink>
-    </NotAuthorized>
-</AuthorizeView>
-    
-    <h3>Are you a student? Join a live session here!</h3>
-    <NavLink class="link" href="/Student">Join session</NavLink>
+                </Authorized>
+                <NotAuthorized>
+                    <div class="educator">
+                        <h2>Are you an educator?</h2>
+                        <h4>Start by registering or sign in if you already have one</h4>
+                        <span class="btnSpan">
+                        <a class="btnLink" href="/Register">
+                            <NavButton>
+                                Register
+                            </NavButton>
+                        </a>
+                        <a class="btnLink" href="/Login">
+                            <NavButton>Sign In</NavButton>
+                        </a>
+                    </span>
+                    </div>
+                </NotAuthorized>
+            </AuthorizeView>
+            <div class="student">
+                <h2>Are you a student? Join a live session here!</h2>
+                <a class="btnLink" href="/Student">
+                    <NavButton>Join session</NavButton>
+                </a>
+            </div>
+        </div>
+    </div>
 </div>
 
 

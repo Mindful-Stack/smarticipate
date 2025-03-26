@@ -1,23 +1,26 @@
 ﻿@page "/Login"
-@using Smarticipate.Web.Authentication
 @inject IAccountManagement Account
 @inject NavigationManager Navigation
 
-<h3>Login</h3>
+<div class="login">
+    <div class="loginContent">
+        <h2 class="titleLogin">Sign In</h2>
 
-<EditForm Model="_credentials" OnValidSubmit="LoginUser">
-    <div>
-        <label for="">Username:</label>
-        <InputText @bind-value="_credentials.Email"/>
+        <EditForm class="form" Model="_credentials" OnValidSubmit="LoginUser">
+            <div class="formField">
+                <label for="">Username:</label>
+                <InputText id="inputText" @bind-value="_credentials.Email"/>
+            </div>
+
+            <div class="formField">
+                <label for="">Password:</label>
+                <InputText id="inputText" @bind-value="_credentials.Password" type="password"/>
+            </div>
+
+            <button class="btn submitBtn" type="submit">Login</button>
+        </EditForm>
     </div>
-
-    <div>
-        <label for="">Password:</label>
-        <InputText @bind-value="_credentials.Password" type="password"/>
-    </div>
-
-    <button type="submit">Login</button>
-</EditForm>
+</div>
 
 @code {
 

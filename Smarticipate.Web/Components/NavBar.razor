@@ -1,0 +1,33 @@
+﻿@inject IAccountManagement Account
+@inject NavigationManager Navigation
+
+<nav class="navbar">
+        <a class="btnLink brandHome" href="/">
+    <div class="navElement navBrand">
+        <img src="./images/smarticipate-logo.png" alt="Smarticipate logo" height="50px">
+        <h1 class="title">Smarticipate</h1>
+    </div>
+        </a>
+
+    <div class="navElement navUser">
+        <AuthorizeView>
+            <Authorized>
+                <p>Welcome, <span class="identityUsername">@context.User.Identity?.Name</span></p>
+                <button class="link" onclick="@LogoutUser">Log out</button>
+            </Authorized>
+            <NotAuthorized>
+
+            </NotAuthorized>
+        </AuthorizeView>
+    </div>
+</nav>
+
+@code {
+
+    private async Task LogoutUser()
+    {
+        await Account.LogoutAsync();
+        Navigation.NavigateTo("/");
+    }
+
+}

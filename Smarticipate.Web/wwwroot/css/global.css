@@ -1,11 +1,15 @@
 ﻿:root {
     --beige: #f2e9e1;
-    --dark: #575279;
+    --dark: #393552;
     --gold: #f6c177;
     --orange: #d7827e;
     --purple: #c4a7e7;
     --red: #b4637a;
     --teal: #286983;
+
+    --padding-box: .5rem 1rem;
+    --border-radius: 2px;
+
 
     --space-mono: "Space Mono", sans-serif;
     --inter: "Inter", sans-serif;
@@ -28,7 +32,7 @@
 }
 
 html {
-        font-family: var(--inter);
+    font-family: var(--inter);
     color: var(--dark);
 
     /*Background gradient*/
@@ -38,22 +42,25 @@ html {
     radial-gradient(100% 100% at var(--g4-4-x-position) var(--g4-4-y-position), var(--red) -100%, transparent), var(--beige);
     animation-name: g-4;
     animation-iteration-count: infinite;
-    animation-duration: 20s;
+    animation-duration: 15s;
     transition-timing-function: ease-in-out;
 }
 
-body{
-    height: 100vh;
-    width: 100vw;
+body {
+
 }
 
-#app{
+/* ########################## First body child ########################## */
+
+#app {
+    height: 100vh;
+    width: 100vw;
     display: grid;
-    grid-template-rows: 5rem 1fr;
+    grid-template-rows: 5rem calc(100% - 5rem);
     position: relative;
 }
 
-/*Navigation*/
+/* ########################## Navigation ########################## */
 .navbar {
     grid-row: 1;
     display: flex;
@@ -67,31 +74,99 @@ body{
     padding: 0 1.5rem;
 }
 
-.navElement{
+.navElement {
     display: flex;
     align-items: center;
 }
 
-.navBrand{
+.navBrand {
     gap: 1rem;
 }
 
-.navUser{
+.navUser {
     gap: 2rem;
 }
 
-main{
-    grid-row: 2;
-    width: 100vw;
-    padding: 0 1.5rem;    
+.identityUsername {
+    font-family: Ekwarg;
+    font-style: italic;
 }
 
-
-
-.btn {
+.title{
+    outline: none;
 }
 
-.link{
+/* ########################## Button ########################## */
+.navBtn, .btn {
+    width: 12rem;
+    padding: var(--padding-box);
+    border: 2px solid var(--dark);
+    cursor: pointer;
+    font-family: var(--inter);
+    font-size: 1rem;
+    border-radius: var(--border-radius);
+    font-weight: bold;
+    display: inline-block;
+    text-align: start;
+    transition: all 1s ease-in-out;
+    background: linear-gradient(to left, var(--beige) 50%, var(--dark) 50%);
+    background-size: 200% 100%;
+    background-position: right bottom;
+    position: relative;
+    color: var(--dark);
+
+    &:hover {
+        /*background-color: var(--dark);*/
+        background-position: left bottom;
+
+        border: 2px solid var(--dark);
+        color: var(--beige);
+
+        a {
+            color: var(--beige)
+        }
+    }
+
+    &::after {
+        content: '';
+        position: absolute;
+        bottom: -5px; /* Adjust offset from the bottom */
+        right: -5px; /* Adjust offset from the right */
+        width: 100%;
+        height: 100%;
+        border-bottom: 3px solid var(--dark); /* Simulated border - adjust color and thickness as needed */
+        border-right: 3px solid var(--dark); /* Simulated border - adjust color and thickness as needed */
+        border-radius: var(--border-radius);
+        z-index: -1; /* Ensure it stays behind the .navBtn */
+    }
+}
+
+.submitBtn {
+    width: 14rem;
+}
+
+.brandHome{
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+/* ########################## Links ########################## */
+
+.btnLink {
+    background-color: transparent;
+    color: var(--dark);
+    font-family: var(--inter);
+    font-weight: bold;
+    font-size: 1rem;
+    text-decoration: none;
+
+    &:visited {
+        color: var(--dark);
+    }
+}
+
+.link {
     background-color: transparent;
     border: none;
     color: var(--dark);
@@ -99,27 +174,119 @@ main{
     font-weight: bold;
     font-size: 1rem;
     text-decoration: underline;
-    
-    &:hover{
+
+    &:hover {
         cursor: pointer;
         text-decoration: none;
     }
-    
-    &:visited{
+
+    &:visited {
         color: var(--dark);
     }
 }
 
-.hero{
-grid-template-rows: subgrid;    position: absolute;
-        align-content: center;
-    justify-items: center ;
-    height: 100%;
+/* ########################## Forms ########################## */
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.formField {
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+}
+
+#inputText {
+    padding: var(--padding-box);
+    border-radius: var(--border-radius);
+    width: 14rem;
+    outline: none;
+    border: 2px solid var(--dark);
+    background-color: var(--beige);
+    color: var(--dark);
+    font-family: Ekwarg;
+    font-style: italic;
+
+    &:focus {
+        border: 2px solid var(--red)
+    }
 }
 
 
+label {
+    font-weight: bold;
+}
 
-/*Background gradient animation*/
+
+/* ########################## Pages & Layout ########################## */
+main {
+    display: grid;
+    grid-row: 2;
+    width: 100vw;
+}
+
+/* ############### Home ############### */
+
+.home {
+    display: grid;
+    padding: 0 1.5rem;
+}
+
+.hero {
+    grid-template-rows: subgrid;
+    position: absolute;
+    align-content: center;
+    justify-items: start;
+    padding-left: 1.5rem;
+}
+
+.welcome {
+    margin-top: 5rem;
+    font-size: 4rem;
+    color: var(--dark);
+}
+
+.heroContent {
+    display: flex;
+    flex-direction: column;
+    padding: 3rem 0;
+    gap: 3rem;
+}
+
+.educator, .student {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.btnSpan {
+    display: flex;
+    gap: 2rem;
+}
+
+/* ############### Login ############### */
+.login {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+}
+
+.loginContent {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-top: 11rem;
+}
+
+.titleLogin {
+    text-align: center;
+}
+
+
+/* ##########################Background gradient animation ########################## */
 @property --g4-1-x-position {
     syntax: "<percentage>";
     inherits: false;

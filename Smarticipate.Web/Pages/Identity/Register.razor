@@ -1,6 +1,4 @@
 ﻿@page "/Register"
-@using System.ComponentModel.DataAnnotations
-@using Smarticipate.Web.Authentication
 @inject IAccountManagement Account
 @inject NavigationManager Navigation
 
@@ -29,12 +27,12 @@
         <ValidationMessage For="@(() => _confirmPassword)"/>
     </div>
 
-    <button type="submit">Register</button>
+    <button class="btn" type="submit">Register</button>
 </EditForm>
 
 @if (!string.IsNullOrEmpty(_message))
 {
-    <p style="color: red">@_message</p>
+    <p style="color: var(--red)">@_message</p>
 }
 
 @code{
