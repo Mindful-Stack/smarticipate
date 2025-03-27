@@ -6,7 +6,7 @@
 
 <div class="login">
     <div class="loginContent">
-        <h2 class="titleRegisterLogin">Sign In</h2>
+        <h2 class="titleLogin">Sign In</h2>
 
         <EditForm class="form" Model="_credentials" OnValidSubmit="LoginUser">
             <div class="formField">
@@ -19,15 +19,19 @@
                 <InputText id="inputText" @bind-value="_credentials.Password" type="password"/>
             </div>
 
-            <button class="btn submitBtn" type="submit">Login</button>
+            <button class="submitBtn" type="submit">Login</button>
         </EditForm>
     </div>
+    @if (!string.IsNullOrEmpty(_message))
+    {
+        <p class="warning" style="color: var(--red)">@_message</p>
+    }
 </div>
 
 @code {
-
     private LoginModel _credentials = new();
-
+    private string? _message = "";
+    
     private async Task LoginUser()
     {
         var response = await Account.LoginAsync(_credentials.Email, _credentials.Password);
@@ -35,7 +39,11 @@
         if (response.Succeeded)
         {
             Console.WriteLine("Login successful!");
-            Navigation.NavigateTo("/");
+            Navigation.NavigateTo("/TeacherSession");
+        }
+        else
+        {
+            _message = "Wrong username or password";
         }
     }
 
