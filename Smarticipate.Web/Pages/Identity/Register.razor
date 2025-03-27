@@ -34,14 +34,18 @@
     </div>
     @if (_isLoading)
     {
+        <div class="mud-scope">
+            
         <MudProgressLinear Color="Color.Dark" Indeterminate="true" Style="width: 14rem;"/>
+        </div>
+        
     }
     @if (!string.IsNullOrEmpty(_message))
     {
         <p class="warning" style="color: var(--red)">@_message</p>
     }
-</div>
 
+</div>
 
 
 @code{

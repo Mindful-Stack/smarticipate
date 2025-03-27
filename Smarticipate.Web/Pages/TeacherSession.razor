@@ -1,6 +1,109 @@
 ﻿@page "/TeacherSession"
-<h3>TeacherSession</h3>
+
+<div class="teacherSession">
+    <div class="teacherSessionContent">
+        <AuthorizeView>
+            <Authorized>
+                @if (!_isInSession)
+                {
+                    <div class="inactiveSessionContainer">
+                        <h1>Start a live session</h1>
+                        <button class="submitBtn btnWithIcon" onclick="@StartSession">
+                            <MudIcon Icon="@Icons.Material.Outlined.SmartDisplay" Style="width: 40px;"/>
+                            Start
+                        </button>
+                    </div>
+                }
+                else
+                {
+                    <div class="activeSessionContainer">
+                        <div class="sessionInfo">
+                            <h2 class="activeSessionTitle">Active Session: 1575950 </h2>
+                            <MudIconButton Class="stopIcon" Color="Color.Error"
+                                           Icon="@Icons.Material.Outlined.StopCircle" Size="Size.Small"
+                                           aria-label="stop" OnClick="StopSession"/>
+                            @* <button class="submitBtn btnWithIcon stopBtn" onclick="@StopSession"> *@
+                            @*     <MudIcon Icon="@Icons.Material.Outlined.SmartDisplay" Style="width: 40px;"/> *@
+                            @*     Stop *@
+                            @* </button> *@
+                        </div>
+                        <div class="timer">
+                            <div class="timerSetup">
+                                <h1 class="questionTimer">Question timer</h1>
+                                <input class="timerInput" type="number" min="0" @bind="@_CountdownTime">
+                                <button class="submitBtn btnWithIcon" onclick="@StartCountdown">
+                                    <MudIcon Icon="@Icons.Material.Outlined.Timer" Style="width: 40px;"/>
+                                    Start
+                                </button>
+                            </div>
+                            <div class="countdown">
+                                <h1 class="countDownRest">@_CountdownDisplay</h1>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </Authorized>
+            <NotAuthorized>
+                <h2>You need to
+                    <a id="signIn" href="/login">sign in</a>
+                    to access this page
+                </h2>
+            </NotAuthorized>
+        </AuthorizeView>
+
+
+    </div>
+</div>
 
 @code {
+    private bool _isInSession;
+    private int _countdownTime = 60;
+    private string _CountdownDisplay = "00:00";
+    private Timer? _countdownTimer;
+    private int _CountdownTime
+    {
+        get => _countdownTime;
+        set
+        {
+            if (value >= 0)
+            {
+                _countdownTime = value;
+                _CountdownDisplay = TimeSpan.FromSeconds(_countdownTime).ToString(@"mm\:ss");
+            }
+        }
+    }
     
+    private async Task StartCountdown()
+    {
+        StopCountdown();
+        
+       _countdownTimer  = new Timer(async _ =>
+        {
+            if (_CountdownTime > 0)
+            {
+                _CountdownTime--;
+                await InvokeAsync(StateHasChanged);
+            }
+            else
+            {
+                StopCountdown();
+            }
+        }, null, 0, 1000);
+    }
+
+    private void StopCountdown()
+    {
+        _countdownTimer?.Dispose();
+    }
+
+    private void StartSession()
+    {
+        _isInSession = true;
+    }
+
+    private void StopSession()
+    {
+        _isInSession = false;
+    }
+
 }

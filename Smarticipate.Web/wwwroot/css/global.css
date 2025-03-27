@@ -9,10 +9,12 @@
 
     --padding-box: .5rem 1rem;
     --border-radius: 2px;
+    --underline-offest: 4px;
 
 
-    --space-mono: "Space Mono", sans-serif;
+    --space-mono: "Space Mono", mono;
     --inter: "Inter", sans-serif;
+    --ekwarg: "Ekwarg", mono;
 
     /*Background gradient*/
     --g4-1-x-position: 87.23379629629622%;
@@ -33,7 +35,7 @@
 
 html {
     font-family: var(--inter);
-    color: var(--dark);    
+    color: var(--dark);
 }
 
 body {
@@ -48,7 +50,7 @@ body {
     animation-name: g-4;
     animation-iteration-count: infinite;
     animation-duration: 15s;
-    transition-timing-function: ease-in-out;    
+    transition-timing-function: ease-in-out;
 }
 
 /* ########################## First body child ########################## */
@@ -59,6 +61,9 @@ body {
     display: grid;
     grid-template-rows: 5rem calc(100% - 5rem);
     position: relative;
+    color: var(--dark);
+    font-family: var(--inter);
+
 }
 
 /* ########################## Pages & Layout ########################## */
@@ -92,7 +97,7 @@ main {
 .form {
     display: flex;
     flex-direction: column;
-    gap: 2rem;
+    gap: 1.5rem;
 }
 
 .formField {
@@ -114,6 +119,13 @@ main {
 
     &:focus {
         border: 2px solid var(--red)
+    }
+
+    &:-webkit-autofill {
+        background-color: var(--beige);
+        color: var(--dark);
+        font-family: Ekwarg;
+        font-style: italic;
     }
 }
 
