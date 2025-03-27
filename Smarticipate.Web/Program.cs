@@ -3,11 +3,13 @@ using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Smarticipate.Web;
 using Smarticipate.Web.Authentication;
+using MudBlazor.Services;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
+builder.Services.AddMudServices();
 builder.Services.AddTransient<CookieHandler>();
 builder.Services.AddAuthorizationCore();
 

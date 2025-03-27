@@ -32,6 +32,10 @@
             <button class="submitBtn" type="submit">Register</button>
         </EditForm>
     </div>
+    @if (_isLoading)
+    {
+        <MudProgressLinear Color="Color.Dark" Indeterminate="true" Style="width: 14rem;"/>
+    }
     @if (!string.IsNullOrEmpty(_message))
     {
         <p class="warning" style="color: var(--red)">@_message</p>
@@ -43,6 +47,7 @@
 @code{
     private string _confirmPassword = "";
     private string? _message = "";
+    private bool _isLoading;
     private RegisterModel _newUser = new();
 
     private string IsPasswordValid()
@@ -51,7 +56,7 @@
         {
             var (p, c) when string.IsNullOrEmpty(p) || string.IsNullOrEmpty(c) => "Password fields cannot be empty",
             var (p, c) when p != c => "Passwords do not match",
-            var (p, _) when p.Length < 8 => "Password must be at least 8 characters long",
+            var (p, _) when p.Length < 7 => "Password must be at least 7 characters long",
             var (p, _) when !p.Any(char.IsUpper) => "Password must contain at least one uppercase letter",
             var (p, _) when !p.Any(char.IsDigit) => "Password must contain at least one number",
             var (p, _) when !p.Any(ch => !char.IsLetterOrDigit(ch)) => "Password must contain at least one special character",
@@ -67,6 +72,7 @@
             _message = validationResult;
         }
 
+        _isLoading = true;
         var response = await Account.RegisterAsync(_newUser.Email, _newUser.Password);
 
         if (response.Succeeded)
@@ -74,7 +80,8 @@
             var loginResponse = await Account.LoginAsync(_newUser.Email, _newUser.Password);
             if (loginResponse.Succeeded)
             {
-                Navigation.NavigateTo("/");
+                _isLoading = false;
+                Navigation.NavigateTo("/TeacherSession");
             }
             else
             {
