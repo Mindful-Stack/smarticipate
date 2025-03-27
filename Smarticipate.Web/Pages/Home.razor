@@ -1,28 +1,41 @@
 ﻿@page "/"
-@using Smarticipate.Web.Authentication
-@inject IAccountManagement Account
-@inject NavigationManager Navigation
-
-<h3>Welcome to Smarticipate!</h3>
-<AuthorizeView>
-    <Authorized>
-        <p>You are logged in as @context.User.Identity?.Name</p>
-        <button onclick="@LogoutUser">Log out</button>
-    </Authorized>
-
-    <NotAuthorized>
-        <a href="/Register">Register</a>
-        <a href="/Login">Login</a>        
-    </NotAuthorized>
-</AuthorizeView>
-
-@code{
-
-    private async Task LogoutUser()
-    {
-        await Account.LogoutAsync();
-        Navigation.NavigateTo("/");
-    }
+<PageTitle>Home</PageTitle>
 
 
-}
+<div class="home">
+    <div class="hero">
+        <h1 class="welcome">Welcome to Smarticipate!</h1>
+        <div class="heroContent">
+            <AuthorizeView>
+                <Authorized>
+
+                </Authorized>
+                <NotAuthorized>
+                    <div class="educator">
+                        <h2>Are you an educator?</h2>
+                        <h4>Start by registering or sign in if you already have one</h4>
+                        <span class="btnSpan">
+                        <a class="btnLink" href="/Register">
+                            <NavButton>
+                                Register
+                            </NavButton>
+                        </a>
+                        <a class="btnLink" href="/Login">
+                            <NavButton>Sign In</NavButton>
+                        </a>
+                    </span>
+                    </div>
+                </NotAuthorized>
+            </AuthorizeView>
+            <div class="student">
+                <h2>Are you a student? Join a live session here!</h2>
+                <a class="btnLink" href="/Student">
+                    <NavButton>Join session</NavButton>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
