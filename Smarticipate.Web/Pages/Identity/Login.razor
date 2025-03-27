@@ -22,23 +22,31 @@
             <button class="submitBtn" type="submit">Login</button>
         </EditForm>
     </div>
+    @if (_isLoading)
+    {
+        <MudProgressLinear Color="Color.Dark" Indeterminate="true" Style="width: 14rem;"/>
+    }
     @if (!string.IsNullOrEmpty(_message))
     {
         <p class="warning" style="color: var(--red)">@_message</p>
     }
+
+
 </div>
 
 @code {
     private LoginModel _credentials = new();
     private string? _message = "";
-    
+    private bool _isLoading;
+
     private async Task LoginUser()
     {
+        _isLoading = true;
         var response = await Account.LoginAsync(_credentials.Email, _credentials.Password);
-
         if (response.Succeeded)
         {
             Console.WriteLine("Login successful!");
+            _isLoading = false;
             Navigation.NavigateTo("/TeacherSession");
         }
         else

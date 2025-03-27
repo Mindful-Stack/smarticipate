@@ -1,7 +1,33 @@
 ﻿@inherits LayoutComponentBase
+@* Required *@
+<MudThemeProvider Theme="_mudTheme"/>
+<MudPopoverProvider />
+
+@* Needed for dialogs *@
+<MudDialogProvider />
+
+@* Needed for snackbars *@
+<MudSnackbarProvider />
 
 <NavBar/>
 <main>
     @Body
 </main>
 
+@code{
+
+    private readonly MudTheme _mudTheme = new()
+    {
+        PaletteLight = new PaletteLight
+        {
+            Dark = "#393552", //--dark
+            Primary = "#f2e9e1", //--beige
+            Secondary = "#286983", //--teal
+            Tertiary = "#f6c177", //--gold
+            Info = "#907aa9", //--purple
+            Warning = "#d7827e", //--orange
+            Error = "#b4637a" //--red
+        }
+    };
+
+}
