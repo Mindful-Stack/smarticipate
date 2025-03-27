@@ -1,0 +1,43 @@
+﻿.navBtn{
+    width: 12rem;
+    padding: var(--padding-box);
+    border: 2px solid var(--dark);
+    cursor: pointer;
+    font-family: var(--inter);
+    font-size: 1rem;
+    border-radius: var(--border-radius);
+    font-weight: bold;
+    display: inline-block;
+    text-align: start;
+    transition: all 1s ease-in-out;
+    background: linear-gradient(to left, var(--beige) 50%, var(--dark) 50%);
+    background-size: 200% 100%;
+    background-position: right bottom;
+    position: relative;
+    color: var(--dark);
+
+    &:hover {
+        /*background-color: var(--dark);*/
+        background-position: left bottom;
+
+        border: 2px solid var(--dark);
+        color: var(--beige);
+
+        a {
+            color: var(--beige)
+        }
+    }
+
+    &::after {
+        content: '';
+        position: absolute;
+        bottom: -5px; /* Adjust offset from the bottom */
+        right: -5px; /* Adjust offset from the right */
+        width: 100%;
+        height: 100%;
+        border-bottom: 3px solid var(--dark); /* Simulated border - adjust color and thickness as needed */
+        border-right: 3px solid var(--dark); /* Simulated border - adjust color and thickness as needed */
+        border-radius: var(--border-radius);
+        z-index: -1; /* Ensure it stays behind the .navBtn */
+    }
+}

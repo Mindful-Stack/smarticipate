@@ -1,0 +1,51 @@
+﻿.navbar {
+    grid-row: 1;
+    display: flex;
+    position: absolute;
+    height: 5rem;
+    width: 100%;
+    font-size: 1rem;
+    font-weight: bold;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 1.5rem;
+}
+
+.navElement {
+    display: flex;
+    align-items: center;
+}
+
+.navBrand {
+    gap: 1rem;
+}
+
+.navUser {
+    gap: 2rem;
+}
+
+.identityUsername {
+    color: var(--red);
+    font-family: Ekwarg;
+    font-style: italic;
+    font-weight: 500;
+}
+
+.title{
+    outline: none;
+}
+
+.brandHome{
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.btnLink{
+    color: var(--dark);
+    text-decoration: none;
+    
+    &:visited{
+        color: var(--dark);
+    }
+}

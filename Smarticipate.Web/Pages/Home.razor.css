@@ -1,0 +1,48 @@
+﻿.home {
+    display: grid;
+    padding: 0 1.5rem;
+}
+
+.hero {
+    grid-template-rows: subgrid;
+    position: absolute;
+    align-content: center;
+    justify-items: start;
+    padding-left: 1.5rem;
+}
+
+.welcome {
+    margin-top: 5rem;
+    font-size: 4rem;
+    color: var(--dark);
+}
+
+.heroContent {
+    display: flex;
+    flex-direction: column;
+    padding: 3rem 0;
+    gap: 3rem;
+}
+
+.educator, .student {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.educatorSpan{
+    color: var(--teal);
+    font-family: Ekwarg;
+    font-style: italic;
+}
+
+.studentSpan{
+color: var(--red);
+    font-family: Ekwarg;
+    font-style: italic;
+}
+
+.btnSpan {
+    display: flex;
+    gap: 2rem;
+}
