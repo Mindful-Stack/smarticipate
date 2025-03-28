@@ -24,4 +24,9 @@ builder.Services.AddHttpClient(
         opt => opt.BaseAddress = new Uri(builder.Configuration["BackendUrl"] ?? "https://localhost:44397/api/identity/"))
     .AddHttpMessageHandler<CookieHandler>();
 
+builder.Services.AddHttpClient(
+        "API", 
+        opt => opt.BaseAddress = new Uri(builder.Configuration["ApiUrl"] ?? "https://localhost:44397/"))
+    .AddHttpMessageHandler<CookieHandler>();
+
 await builder.Build().RunAsync();

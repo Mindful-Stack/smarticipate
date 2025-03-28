@@ -12,7 +12,7 @@ using Smarticipate.API.Data.Identity;
 namespace Smarticipate.API.Migrations
 {
     [DbContext(typeof(UserDbContext))]
-    [Migration("20250328135432_Init")]
+    [Migration("20250328153104_Init")]
     partial class Init
     {
         /// <inheritdoc />
@@ -244,7 +244,7 @@ namespace Smarticipate.API.Migrations
 
                     b.HasIndex("SessionId");
 
-                    b.ToTable("Question");
+                    b.ToTable("Questions");
                 });
 
             modelBuilder.Entity("Smarticipate.Core.Entities.Response", b =>
@@ -268,7 +268,7 @@ namespace Smarticipate.API.Migrations
 
                     b.HasIndex("QuestionId");
 
-                    b.ToTable("Response");
+                    b.ToTable("Responses");
                 });
 
             modelBuilder.Entity("Smarticipate.Core.Entities.Session", b =>
@@ -296,7 +296,7 @@ namespace Smarticipate.API.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Session");
+                    b.ToTable("Sessions");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>

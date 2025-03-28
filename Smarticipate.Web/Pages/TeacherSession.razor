@@ -1,5 +1,8 @@
 ﻿@page "/TeacherSession"
 
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IHttpClientFactory HttpClient
+
 <div class="teacherSession">
     <div class="teacherSessionContent">
         <AuthorizeView>
@@ -18,7 +21,7 @@
                 {
                     <div class="activeSessionContainer">
                         <div class="sessionInfo">
-                            <h2 class="activeSessionTitle">Active Session: 1575950 </h2>
+                            <h2 class="activeSessionTitle">Active Session: @_sessionCode </h2>
                             <MudIconButton Class="stopIcon" Color="Color.Error"
                                            Icon="@Icons.Material.Outlined.StopCircle" Size="Size.Small"
                                            aria-label="stop" OnClick="StopSession"/>
@@ -59,12 +62,17 @@
 
 @code {
     private bool _isInSession;
+    private string _sessionCode = string.Empty;
+    private Random _random = new();
+
+
     private bool _isTimerOn;
     private int _inputCountdownTime = 60;
     private int _countdownTime = 60;
     private string _countdownDisplay = "00:00";
     private int _initialCountdownTime;
     private double _progressPercentage = 100;
+
 
     private Timer? _countdownTimer;
 
@@ -113,14 +121,50 @@
         _progressPercentage = 100;
     }
 
-    private void StartSession()
+    private async Task StartSession()
     {
         _isInSession = true;
+        if (_isInSession)
+        {
+            int randomNumber = _random.Next(10000000, 99999999);
+            _sessionCode = randomNumber.ToString();
+
+            try
+            {
+                var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+                var user = authState.User;
+
+                var client = HttpClient.CreateClient("API");
+                
+                var request = new
+                {
+                    SessionCode = _sessionCode,
+                    StartTime = DateTime.UtcNow,
+                    EndTime = (DateTime?)null
+                };
+
+                var response = await client.PostAsJsonAsync("api/sessions", request);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    Console.WriteLine($"Error creating session: {response.StatusCode}");
+                    _isInSession = false;
+                    _sessionCode = string.Empty;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Exception when creating session: {ex.Message}");
+                _isInSession = false;
+                _sessionCode = string.Empty;
+            }
+        }
     }
 
     private void StopSession()
     {
         _isInSession = false;
+        _sessionCode = string.Empty;
         StopCountdown();
     }
 

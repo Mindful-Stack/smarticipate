@@ -157,7 +157,7 @@ namespace Smarticipate.API.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Session",
+                name: "Sessions",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
@@ -169,16 +169,16 @@ namespace Smarticipate.API.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Session", x => x.Id);
+                    table.PrimaryKey("PK_Sessions", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_Session_AspNetUsers_UserId",
+                        name: "FK_Sessions_AspNetUsers_UserId",
                         column: x => x.UserId,
                         principalTable: "AspNetUsers",
                         principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
-                name: "Question",
+                name: "Questions",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
@@ -189,17 +189,17 @@ namespace Smarticipate.API.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Question", x => x.Id);
+                    table.PrimaryKey("PK_Questions", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_Question_Session_SessionId",
+                        name: "FK_Questions_Sessions_SessionId",
                         column: x => x.SessionId,
-                        principalTable: "Session",
+                        principalTable: "Sessions",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
-                name: "Response",
+                name: "Responses",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
@@ -210,11 +210,11 @@ namespace Smarticipate.API.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Response", x => x.Id);
+                    table.PrimaryKey("PK_Responses", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_Response_Question_QuestionId",
+                        name: "FK_Responses_Questions_QuestionId",
                         column: x => x.QuestionId,
-                        principalTable: "Question",
+                        principalTable: "Questions",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -259,18 +259,18 @@ namespace Smarticipate.API.Migrations
                 filter: "[NormalizedUserName] IS NOT NULL");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Question_SessionId",
-                table: "Question",
+                name: "IX_Questions_SessionId",
+                table: "Questions",
                 column: "SessionId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Response_QuestionId",
-                table: "Response",
+                name: "IX_Responses_QuestionId",
+                table: "Responses",
                 column: "QuestionId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Session_UserId",
-                table: "Session",
+                name: "IX_Sessions_UserId",
+                table: "Sessions",
                 column: "UserId");
         }
 
@@ -293,16 +293,16 @@ namespace Smarticipate.API.Migrations
                 name: "AspNetUserTokens");
 
             migrationBuilder.DropTable(
-                name: "Response");
+                name: "Responses");
 
             migrationBuilder.DropTable(
                 name: "AspNetRoles");
 
             migrationBuilder.DropTable(
-                name: "Question");
+                name: "Questions");
 
             migrationBuilder.DropTable(
-                name: "Session");
+                name: "Sessions");
 
             migrationBuilder.DropTable(
                 name: "AspNetUsers");
