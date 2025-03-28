@@ -2,13 +2,25 @@
 @inject NavigationManager Navigation
 
 <nav class="navbar">
-        <a class="btnLink brandHome" href="/">
-    <div class="navElement navBrand">
-        <img src="./images/smarticipate-logo.png" alt="Smarticipate logo" height="50px">
-        <h1 class="title">Smarticipate</h1>
-    </div>
-        </a>
-
+    <AuthorizeView>
+        <Authorized>
+            <a class="btnLink brandHome" href="/TeacherSession">
+                <div class="navElement navBrand">
+                    <img src="./images/smarticipate-logo.png" alt="Smarticipate logo" height="50px">
+                    <h1 class="title">Smarticipate</h1>
+                </div>
+            </a>
+        </Authorized>
+        <NotAuthorized>
+            <a class="btnLink brandHome" href="/">
+                <div class="navElement navBrand">
+                    <img src="./images/smarticipate-logo.png" alt="Smarticipate logo" height="50px">
+                    <h1 class="title">Smarticipate</h1>
+                </div>
+            </a>
+        </NotAuthorized>
+    </AuthorizeView>
+    
     <div class="navElement navUser">
         <AuthorizeView>
             <Authorized>

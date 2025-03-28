@@ -1,9 +1,18 @@
 ﻿@page "/"
-<PageTitle>Home</PageTitle>
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Navigation
 
+<PageTitle>Home</PageTitle>
 
 <div class="home">
     <div class="hero">
+        @if (_isLoading)
+        {
+            <MudProgressCircular Color="Color.Info" Size="Size.Large"/>
+        }
+        else
+        {
+            
         <h1 class="welcome">Welcome to Smarticipate!</h1>
         <div class="heroContent">
             <AuthorizeView>
@@ -15,28 +24,42 @@
                         <h2>Are you an <span class="educatorSpan">educator</span>?</h2>
                         <h4>Start by registering or sign in if you already have one</h4>
                         <span class="btnSpan">
-                        <a href="/Register">
-                            <NavButton>
-                                Register
-                            </NavButton>
+                            <a href="/Register">
+                                <NavButton>
+                                    Register
+                                </NavButton>
+                            </a>
+                            <a href="/Login">
+                                <NavButton>Sign In</NavButton>
+                            </a>
+                        </span>
+                    </div>
+                    <div class="student">
+                        <h2>Are you a <span class="studentSpan">student</span>?</h2>
+                        <h4>Join a live session here!</h4>
+                        <a href="/Student">
+                            <NavButton>Join session</NavButton>
                         </a>
-                        <a href="/Login">
-                            <NavButton>Sign In</NavButton>
-                        </a>
-                    </span>
                     </div>
                 </NotAuthorized>
             </AuthorizeView>
-            <div class="student">
-                <h2>Are you a <span class="studentSpan">student</span>?</h2>
-                <h4>Join a live session here!</h4>
-                <a href="/Student">
-                    <NavButton>Join session</NavButton>
-                </a>
-            </div>
         </div>
+        }
     </div>
 </div>
 
+@code{
+    private bool _isLoading;
+    protected override async Task OnInitializedAsync()
+    {
+        _isLoading = true;
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        if (authState.User.Identity?.IsAuthenticated == true)
+        {
+            Navigation.NavigateTo("/TeacherSession");
+        }
+        _isLoading = false;
+    }
+}
 
 

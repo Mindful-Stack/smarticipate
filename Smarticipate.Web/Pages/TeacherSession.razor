@@ -1,6 +1,142 @@
 ﻿@page "/TeacherSession"
-<h3>TeacherSession</h3>
+
+<div class="teacherSession">
+    <div class="teacherSessionContent">
+        <AuthorizeView>
+            <Authorized>
+                @if (!_isInSession)
+                {
+                    <div class="inactiveSessionContainer">
+                        <h1>Start a live session</h1>
+                        <button class="submitBtn btnWithIcon" onclick="@StartSession">
+                            <MudIcon Icon="@Icons.Material.Outlined.SmartDisplay" Style="width: 40px;"/>
+                            Start
+                        </button>
+                    </div>
+                }
+                else
+                {
+                    <div class="activeSessionContainer">
+                        <div class="sessionInfo">
+                            <h2 class="activeSessionTitle">Active Session: 1575950 </h2>
+                            <MudIconButton Class="stopIcon" Color="Color.Error"
+                                           Icon="@Icons.Material.Outlined.StopCircle" Size="Size.Small"
+                                           aria-label="stop" OnClick="StopSession"/>
+                            @* <button class="submitBtn btnWithIcon stopBtn" onclick="@StopSession"> *@
+                            @*     <MudIcon Icon="@Icons.Material.Outlined.SmartDisplay" Style="width: 40px;"/> *@
+                            @*     Stop *@
+                            @* </button> *@
+                        </div>
+                        <div class="timer">sdtatus
+                            <div class="timerSetup">
+                                <h1 class="questionTimer">Question timer</h1>
+                                <input class="timerInput" type="number" min="0" @bind="@_inputCountdownTime">
+                                <button class="submitBtn btnWithIcon"
+                                        onclick="@(_isTimerOn ? StopCountdown : StartCountdown)">
+                                    <MudIcon Icon="@Icons.Material.Outlined.Timer" Style="width: 40px;"/>
+                                    @(_isTimerOn ? "Stop" : "Start")
+                                </button>
+                            </div>
+                            <div class="countdown">
+                                <MudProgressCircular Class="progressCircle"
+                                                     Color="@(_countdownTime < 20 ? (_countdownTime < 10 ? Color.Error : Color.Tertiary) : Color.Dark)"
+                                                     Style="width: 150px; height: 150px;" Value="@_progressPercentage"/>
+                                <h1 class="countDownRest">@_countdownDisplay</h1>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </Authorized>
+            <NotAuthorized>
+                <h2 class="signInPrompt">You need to
+                    <a id="signIn" href="/login">sign in</a>
+                    to access this page
+                </h2>
+            </NotAuthorized>
+        </AuthorizeView>
+
+
+    </div>
+</div>
 
 @code {
-    
+    private bool _isInSession;
+    private bool _isTimerOn;
+    private int _inputCountdownTime = 60;
+    private int _countdownTime = 60;
+    private string _countdownDisplay = "00:00";
+    private int _initialCountdownTime;
+    private double _progressPercentage = 100;
+
+
+    private Timer? _countdownTimer;
+    // private int _CountdownTime
+    // {
+    //     get => _countdownTime;
+    //     set
+    //     {
+    //         if (value >= 0)
+    //         {
+    //             _countdownTime = value;
+    //             _countdownDisplay = TimeSpan.FromSeconds(_countdownTime).ToString(@"mm\:ss");
+    //         }
+    //     }
+    // }
+
+    private void StartCountdown()
+    {
+        _countdownTime = _inputCountdownTime;
+        _initialCountdownTime = _inputCountdownTime;
+        _countdownDisplay = TimeSpan.FromSeconds(_countdownTime).ToString(@"mm\:ss");
+        _isTimerOn = true;
+        _progressPercentage = 100;
+
+        if (_countdownTimer != null)
+        {
+            _countdownTimer.Dispose();
+        }
+
+        _countdownTimer = new Timer(
+            _ =>
+            {
+                if (_countdownTime > 0)
+                {
+                    _countdownTime--;
+                    _countdownDisplay = TimeSpan.FromSeconds(_countdownTime).ToString(@"mm\:ss");
+                    _progressPercentage = ((double)_countdownTime / _initialCountdownTime) * 100;
+                    InvokeAsync(StateHasChanged);
+                }
+                else
+                {
+                    _countdownTimer?.Dispose();
+                    _countdownTimer = null;
+                    _isTimerOn = false;
+                    InvokeAsync(StateHasChanged);
+                }
+            },
+            null,
+            0,
+            1000
+        );
+    }
+
+    private void StopCountdown()
+    {
+        _countdownTimer?.Dispose();
+        _isTimerOn = false;
+        _countdownDisplay = "00:00";
+        _progressPercentage = 100;
+    }
+
+    private void StartSession()
+    {
+        _isInSession = true;
+    }
+
+    private void StopSession()
+    {
+        _isInSession = false;
+        StopCountdown();
+    }
+
 }
