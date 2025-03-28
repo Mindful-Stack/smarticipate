@@ -1,4 +1,4 @@
-﻿.signInPrompt{
+﻿.signInPrompt {
     margin-top: -6rem;
 }
 
@@ -36,6 +36,7 @@
     display: flex;
     align-items: center;
     justify-content: start;
+    width: 13rem;
 }
 
 .inactiveSessionContainer {
@@ -73,13 +74,13 @@
     margin-top: -6rem;
     justify-self: flex-start;
     justify-items: center;
-    gap: .5rem;
+    gap: 3rem;
 }
 
 .timerInput {
-    width: 14rem;
+    width: 13rem;
     height: 6rem;
-
+    font-family: var(--ekwarg);
     background-color: var(--beige);
     border-radius: var(--border-radius);
     padding: var(--padding-box);
@@ -90,14 +91,38 @@
     text-align: end;
     margin-bottom: .5rem;
 
-
     &:focus {
         border: 2px solid var(--red)
+    }
+
+    &::-webkit-inner-spin-button {
+        opacity: 1;
+        margin-left: .75rem;
+        padding: 0 2px;
+        filter: brightness(1.5) sepia(0.2) saturate(0.3) hue-rotate(30deg);
     }
 }
 
 .questionTimer {
     font-size: 2rem;
+}
+
+
+.countdown {
+    display: flex;
+    justify-content: center;
+    align-items: end;
+    position: relative;
+}
+
+.countDownRest {
+    position: absolute;
+    margin-bottom: 3.5rem;
+    font-family: var(--ekwarg);
+}
+
+.progressCircle {
+    position: absolute;
 }
 
 

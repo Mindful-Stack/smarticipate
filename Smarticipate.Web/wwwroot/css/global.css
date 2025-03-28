@@ -16,6 +16,7 @@
     --space-mono: "Space Mono", mono;
     --inter: "Inter", sans-serif;
     --ekwarg: "Ekwarg Italic", mono;
+    --ekwarg-regular: "Ekwarg Regular", mono;
 
     /*Background gradient*/
     --g4-1-x-position: 87.23379629629622%;
@@ -115,7 +116,7 @@ main {
     border: 2px solid var(--dark);
     background-color: var(--beige);
     color: var(--dark);
-    font-family: Ekwarg;
+    font-family: var(--ekwarg);
     font-style: italic;
 
     &:focus {

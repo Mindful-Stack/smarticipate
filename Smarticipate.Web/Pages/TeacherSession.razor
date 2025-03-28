@@ -27,17 +27,21 @@
                             @*     Stop *@
                             @* </button> *@
                         </div>
-                        <div class="timer">
+                        <div class="timer">sdtatus
                             <div class="timerSetup">
                                 <h1 class="questionTimer">Question timer</h1>
-                                <input class="timerInput" type="number" min="0" @bind="@_CountdownTime">
-                                <button class="submitBtn btnWithIcon" onclick="@StartCountdown">
+                                <input class="timerInput" type="number" min="0" @bind="@_inputCountdownTime">
+                                <button class="submitBtn btnWithIcon"
+                                        onclick="@(_isTimerOn ? StopCountdown : StartCountdown)">
                                     <MudIcon Icon="@Icons.Material.Outlined.Timer" Style="width: 40px;"/>
-                                    Start
+                                    @(_isTimerOn ? "Stop" : "Start")
                                 </button>
                             </div>
                             <div class="countdown">
-                                <h1 class="countDownRest">@_CountdownDisplay</h1>
+                                <MudProgressCircular Class="progressCircle"
+                                                     Color="@(_countdownTime < 20 ? (_countdownTime < 10 ? Color.Error : Color.Tertiary) : Color.Dark)"
+                                                     Style="width: 150px; height: 150px;" Value="@_progressPercentage"/>
+                                <h1 class="countDownRest">@_countdownDisplay</h1>
                             </div>
                         </div>
                     </div>
@@ -57,43 +61,71 @@
 
 @code {
     private bool _isInSession;
+    private bool _isTimerOn;
+    private int _inputCountdownTime = 60;
     private int _countdownTime = 60;
-    private string _CountdownDisplay = "00:00";
+    private string _countdownDisplay = "00:00";
+    private int _initialCountdownTime;
+    private double _progressPercentage = 100;
+
+
     private Timer? _countdownTimer;
-    private int _CountdownTime
+    // private int _CountdownTime
+    // {
+    //     get => _countdownTime;
+    //     set
+    //     {
+    //         if (value >= 0)
+    //         {
+    //             _countdownTime = value;
+    //             _countdownDisplay = TimeSpan.FromSeconds(_countdownTime).ToString(@"mm\:ss");
+    //         }
+    //     }
+    // }
+
+    private void StartCountdown()
     {
-        get => _countdownTime;
-        set
+        _countdownTime = _inputCountdownTime;
+        _initialCountdownTime = _inputCountdownTime;
+        _countdownDisplay = TimeSpan.FromSeconds(_countdownTime).ToString(@"mm\:ss");
+        _isTimerOn = true;
+        _progressPercentage = 100;
+
+        if (_countdownTimer != null)
         {
-            if (value >= 0)
-            {
-                _countdownTime = value;
-                _CountdownDisplay = TimeSpan.FromSeconds(_countdownTime).ToString(@"mm\:ss");
-            }
+            _countdownTimer.Dispose();
         }
-    }
-    
-    private async Task StartCountdown()
-    {
-        StopCountdown();
-        
-       _countdownTimer  = new Timer(async _ =>
-        {
-            if (_CountdownTime > 0)
+
+        _countdownTimer = new Timer(
+            _ =>
             {
-                _CountdownTime--;
-                await InvokeAsync(StateHasChanged);
-            }
-            else
-            {
-                StopCountdown();
-            }
-        }, null, 0, 1000);
+                if (_countdownTime > 0)
+                {
+                    _countdownTime--;
+                    _countdownDisplay = TimeSpan.FromSeconds(_countdownTime).ToString(@"mm\:ss");
+                    _progressPercentage = ((double)_countdownTime / _initialCountdownTime) * 100;
+                    InvokeAsync(StateHasChanged);
+                }
+                else
+                {
+                    _countdownTimer?.Dispose();
+                    _countdownTimer = null;
+                    _isTimerOn = false;
+                    InvokeAsync(StateHasChanged);
+                }
+            },
+            null,
+            0,
+            1000
+        );
     }
 
     private void StopCountdown()
     {
         _countdownTimer?.Dispose();
+        _isTimerOn = false;
+        _countdownDisplay = "00:00";
+        _progressPercentage = 100;
     }
 
     private void StartSession()
@@ -104,6 +136,7 @@
     private void StopSession()
     {
         _isInSession = false;
+        StopCountdown();
     }
 
 }
