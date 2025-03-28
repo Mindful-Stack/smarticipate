@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 using Smarticipate.API.Data.Identity;
+using Smarticipate.API.Endpoints;
 using JsonOptions = Microsoft.AspNetCore.Http.Json.JsonOptions;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -114,5 +115,7 @@ app.MapPost("/api/identity/logout", async (SignInManager<User> signInManager, [F
 
     return Results.Unauthorized();
 }).RequireAuthorization();
+
+app.MapEndpoints<Program>();
 
 app.Run();

@@ -27,7 +27,7 @@
                             @*     Stop *@
                             @* </button> *@
                         </div>
-                        <div class="timer">sdtatus
+                        <div class="timer">
                             <div class="timerSetup">
                                 <h1 class="questionTimer">Question timer</h1>
                                 <input class="timerInput" type="number" min="0" @bind="@_inputCountdownTime">
@@ -54,8 +54,6 @@
                 </h2>
             </NotAuthorized>
         </AuthorizeView>
-
-
     </div>
 </div>
 
@@ -68,20 +66,7 @@
     private int _initialCountdownTime;
     private double _progressPercentage = 100;
 
-
     private Timer? _countdownTimer;
-    // private int _CountdownTime
-    // {
-    //     get => _countdownTime;
-    //     set
-    //     {
-    //         if (value >= 0)
-    //         {
-    //             _countdownTime = value;
-    //             _countdownDisplay = TimeSpan.FromSeconds(_countdownTime).ToString(@"mm\:ss");
-    //         }
-    //     }
-    // }
 
     private void StartCountdown()
     {
