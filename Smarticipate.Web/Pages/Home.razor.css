@@ -33,13 +33,13 @@
 
 .educatorSpan{
     color: var(--teal);
-    font-family: Ekwarg;
+    font-family: var(--ekwarg);
     font-style: italic;
 }
 
 .studentSpan{
 color: var(--red);
-    font-family: Ekwarg;
+    font-family: var(--ekwarg);
     font-style: italic;
 }
 

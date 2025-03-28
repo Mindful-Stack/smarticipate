@@ -86,3 +86,17 @@ code {
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
     text-align: start;
 }
+
+@font-face {
+    font-family: "Ekwarg Italic";
+    src: url('/fonts/Ekwarg-Italic.otf') format('opentype');
+    font-weight: normal;
+    font-style: italic;
+}
+
+@font-face {
+    font-family: "Inter";
+    src: url('/fonts/Inter.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}

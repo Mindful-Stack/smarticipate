@@ -1,8 +1,15 @@
-﻿#signIn {
+﻿.signInPrompt{
+    margin-top: -6rem;
+}
+
+#signIn {
+    font-family: var(--ekwarg);
     font-size: 1.25rem;
     font-style: italic;
     color: var(--red);
     text-decoration: underline;
+    text-underline-offset: var(--underline-offest);
+
 
     &:visited {
         color: var(--teal)
