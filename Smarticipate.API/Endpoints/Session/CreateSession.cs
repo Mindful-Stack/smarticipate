@@ -19,7 +19,8 @@ public class CreateSession : IEndpoint
     public record Request(
         [FromBody] string SessionCode,
         [FromBody] DateTime? StartTime,
-        [FromBody] DateTime? EndTime
+        [FromBody] DateTime? EndTime,
+        [FromBody] string UserId
     );
 
     public record Response(
@@ -35,6 +36,7 @@ public class CreateSession : IEndpoint
             SessionCode = request.SessionCode,
             StartTime = request.StartTime,
             EndTime = request.EndTime,
+            UserId = request.UserId
         };
 
         db.Sessions.Add(newSession);

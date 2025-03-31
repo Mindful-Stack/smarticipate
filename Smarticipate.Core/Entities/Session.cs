@@ -8,10 +8,8 @@ public class Session
     public string SessionCode { get; set; }
     public DateTime? StartTime { get; set; } = DateTime.Now;
     public DateTime? EndTime { get; set; }
-    
-    // public int UserId { get; set; }
-    // [ForeignKey("UserId")] 
-    // public User User { get; set; } = null!;
+    public string? UserId { get; set; }
+
 
     public List<Question> Questions { get; set; } = new();
 }

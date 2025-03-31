@@ -1,5 +1,6 @@
 ﻿@page "/TeacherSession"
 
+
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IHttpClientFactory HttpClient
 
@@ -65,14 +66,12 @@
     private string _sessionCode = string.Empty;
     private Random _random = new();
 
-
     private bool _isTimerOn;
     private int _inputCountdownTime = 60;
     private int _countdownTime = 60;
     private string _countdownDisplay = "00:00";
     private int _initialCountdownTime;
     private double _progressPercentage = 100;
-
 
     private Timer? _countdownTimer;
 
@@ -133,14 +132,25 @@
             {
                 var authState = await AuthStateProvider.GetAuthenticationStateAsync();
                 var user = authState.User;
+                var userEmail = user.FindFirst(ClaimTypes.Email)?.Value;
 
                 var client = HttpClient.CreateClient("API");
-                
+                string? userId = null;
+                if (!string.IsNullOrEmpty(userEmail))
+                {
+                    var userResponse = await client.GetAsync($"api/users/{Uri.EscapeDataString(userEmail)}");
+                    if (userResponse.IsSuccessStatusCode)
+                    {
+                        userId = await userResponse.Content.ReadFromJsonAsync<string>();
+                    }
+                }
+
                 var request = new
                 {
                     SessionCode = _sessionCode,
                     StartTime = DateTime.UtcNow,
-                    EndTime = (DateTime?)null
+                    EndTime = (DateTime?)null,
+                    UserId = userId
                 };
 
                 var response = await client.PostAsJsonAsync("api/sessions", request);
