@@ -12,13 +12,43 @@
     <link href="_content/MudBlazor/MudBlazor.min.css" rel="stylesheet"/>
 </head>
 
+<style>
+    .loadingContainer {
+        display: grid;
+        gap: 1rem;
+        justify-items: center;
+        position: absolute;
+        top: 40%;
+        left: 50%;
+        transform: translateX(-50%) translateY(-50%);
+    }
+
+    .loadingLogo {
+        animation: spin 2s linear infinite;
+        width: 100px;
+    }
+
+    @keyframes spin {
+        0% {
+            transform: rotate(0deg);
+        }
+        100% {
+            transform: rotate(360deg);
+        }
+    }
+</style>
+
 <body>
 <div id="app">
-    <svg class="loading-progress">
-        <circle r="40%" cx="50%" cy="50%"/>
-        <circle r="40%" cx="50%" cy="50%"/>
-    </svg>
-    <div class="loading-progress-text"></div>
+    <div class="loadingContainer">
+        <img class="loadingLogo" src="images/smarticipate-logo.png"/>
+        <h1>Smarticipate</h1>
+    </div>
+    <!--    <svg class="loading-progress">-->
+    <!--        <circle r="40%" cx="50%" cy="50%"/>-->
+    <!--        <circle r="40%" cx="50%" cy="50%"/>-->
+    <!--    </svg>-->
+    <!--    <div class="loading-progress-text"></div>-->
 </div>
 
 <div id="blazor-error-ui">
