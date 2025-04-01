@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Smarticipate.Web;
 using Smarticipate.Web.Authentication;
 using MudBlazor.Services;
+using Smarticipate.Web.Services;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
@@ -17,6 +18,8 @@ builder.Services.AddScoped<AuthenticationStateProvider,CookieAuthenticationState
 
 builder.Services.AddScoped(
     sp => (IAccountManagement)sp.GetRequiredService<AuthenticationStateProvider>());
+builder.Services.AddScoped<SessionServices>();
+builder.Services.AddScoped<UserServices>();
 
 builder.Services.AddOptions();
 builder.Services.AddHttpClient(

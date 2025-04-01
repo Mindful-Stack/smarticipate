@@ -1,5 +1,7 @@
 ﻿@page "/TeacherSession"
-
+@using Smarticipate.Web.Services
+@inject SessionServices SessionServices
+@inject UserServices UserServices
 
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IHttpClientFactory HttpClient
@@ -25,7 +27,7 @@
                             <h2 class="activeSessionTitle">Active Session: @_sessionCode </h2>
                             <MudIconButton Class="stopIcon" Color="Color.Error"
                                            Icon="@Icons.Material.Outlined.StopCircle" Size="Size.Small"
-                                           aria-label="stop" OnClick="StopSession"/>
+                                           aria-label="stop" OnClick="EndSession"/>
                             @* <button class="submitBtn btnWithIcon stopBtn" onclick="@StopSession"> *@
                             @*     <MudIcon Icon="@Icons.Material.Outlined.SmartDisplay" Style="width: 40px;"/> *@
                             @*     Stop *@
@@ -75,6 +77,32 @@
 
     private Timer? _countdownTimer;
 
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadActiveSession();
+    }
+
+    private async Task LoadActiveSession()
+    {
+        try
+        {
+            var userId = await UserServices.GetAuthenticatedUser();
+            if (!string.IsNullOrEmpty(userId))
+            {
+                var sessionCode = await SessionServices.GetActiveSessionAsync(userId);
+                if (!string.IsNullOrEmpty(sessionCode))
+                {
+                    _isInSession = true;
+                    _sessionCode = sessionCode;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading active session: {ex.Message}");
+        }
+    }
+    
     private void StartCountdown()
     {
         _countdownTime = _inputCountdownTime;
@@ -130,34 +158,33 @@
 
             try
             {
-                var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-                var user = authState.User;
-                var userEmail = user.FindFirst(ClaimTypes.Email)?.Value;
+                // var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+                // var user = authState.User;
+                // var userEmail = user.FindFirst(ClaimTypes.Email)?.Value;
 
-                var client = HttpClient.CreateClient("API");
-                string? userId = null;
-                if (!string.IsNullOrEmpty(userEmail))
+                // var client = HttpClient.CreateClient("API");
+                // string? userId = null;
+                // if (!string.IsNullOrEmpty(userEmail))
+                // {
+                //     var userResponse = await client.GetAsync($"api/users/{Uri.EscapeDataString(userEmail)}");
+                //     if (userResponse.IsSuccessStatusCode)
+                //     {
+                //         userId = await userResponse.Content.ReadFromJsonAsync<string>();
+                //     }
+                // }
+
+                var userId = await UserServices.GetAuthenticatedUser();
+
+                var request = new SessionServices.SessionRequest(
+                    _sessionCode,
+                    DateTime.Now,
+                    null,
+                    userId
+                );
+
+                var success = await SessionServices.CreateSessionAsync(request);
+                if (!success)
                 {
-                    var userResponse = await client.GetAsync($"api/users/{Uri.EscapeDataString(userEmail)}");
-                    if (userResponse.IsSuccessStatusCode)
-                    {
-                        userId = await userResponse.Content.ReadFromJsonAsync<string>();
-                    }
-                }
-
-                var request = new
-                {
-                    SessionCode = _sessionCode,
-                    StartTime = DateTime.UtcNow,
-                    EndTime = (DateTime?)null,
-                    UserId = userId
-                };
-
-                var response = await client.PostAsJsonAsync("api/sessions", request);
-
-                if (!response.IsSuccessStatusCode)
-                {
-                    Console.WriteLine($"Error creating session: {response.StatusCode}");
                     _isInSession = false;
                     _sessionCode = string.Empty;
                 }
@@ -171,11 +198,30 @@
         }
     }
 
-    private void StopSession()
+
+    private async Task EndSession()
     {
-        _isInSession = false;
-        _sessionCode = string.Empty;
-        StopCountdown();
+        try
+        {
+            if (!string.IsNullOrEmpty(_sessionCode))
+            {
+                var success = await SessionServices.UpdateSessionAsync(_sessionCode);
+                if (!success)
+                {
+                    Console.WriteLine("Error updating session");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Exception when stopping session: {ex.Message}");
+        }
+        finally
+        {
+            _isInSession = false;
+            _sessionCode = string.Empty;
+            StopCountdown();
+        }
     }
 
 }
