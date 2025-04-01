@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Components.Authorization;
 
 namespace Smarticipate.Web.Services;
 
-public class UserServices (IHttpClientFactory httpClientFactory, AuthenticationStateProvider authStateProvider)
+public class UserServices (IHttpClientFactory httpClientFactory, AuthenticationStateProvider authStateProvider) : IService
 {
     public async Task<string> GetAuthenticatedUser()
     {

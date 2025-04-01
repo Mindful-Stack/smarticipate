@@ -2,7 +2,7 @@
 
 namespace Smarticipate.Web.Services;
 
-public class SessionServices(IHttpClientFactory httpClientFactory)
+public class SessionServices(IHttpClientFactory httpClientFactory) : IService
 {
     public async Task<bool> CreateSessionAsync(SessionRequest request)
     {
