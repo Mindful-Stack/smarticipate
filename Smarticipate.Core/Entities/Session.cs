@@ -1,6 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
-
-namespace Smarticipate.Core.Entities;
+﻿namespace Smarticipate.Core.Entities;
 
 public class Session
 {
@@ -9,7 +7,6 @@ public class Session
     public DateTime? StartTime { get; set; } = DateTime.Now;
     public DateTime? EndTime { get; set; }
     public string? UserId { get; set; }
-
 
     public List<Question> Questions { get; set; } = new();
 }

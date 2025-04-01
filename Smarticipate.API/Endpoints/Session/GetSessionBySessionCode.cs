@@ -22,15 +22,31 @@ public class GetSessionBySessionCode : IEndpoint
         DateTime? StartTime,
         DateTime? EndTime,
         string UserId,
-        bool IsActive
+        bool IsActive,
+        List<QuestionDto> Questions
     );
+           
+    public record QuestionDto(
+        int Id,
+        int QuestionNumber,
+        List<ResponseDto> Responses
+    );
+    
+    public record ResponseDto(
+        int Id,
+        int SelectedOption,
+        DateTime TimeStamp
+    );            
 
     private static async Task<IResult> Handler(
         string sessionCode,
         [FromServices] UserDbContext db
     )
     {
-        var session = await db.Sessions.FirstOrDefaultAsync(s => s.SessionCode == sessionCode);
+        var session = await db.Sessions
+            .Include(s => s.Questions)
+            .ThenInclude(q => q.Responses)
+            .FirstOrDefaultAsync(s => s.SessionCode == sessionCode);
 
         if (session is null)
         {
@@ -43,7 +59,16 @@ public class GetSessionBySessionCode : IEndpoint
             session.StartTime,
             session.EndTime,
             session.UserId,
-            session.EndTime == null
+            session.EndTime == null,
+            session.Questions.Select(q => new QuestionDto(
+                q.Id, 
+                q.QuestionNumber, 
+                q.Responses.Select(r => new ResponseDto(
+                    r.Id, 
+                    r.SelectedOption, 
+                    r.TimeStamp
+                    )).ToList()
+                )).ToList()
         );
 
         return Results.Ok(response);

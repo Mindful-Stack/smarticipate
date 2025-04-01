@@ -18,8 +18,7 @@ builder.Services.AddScoped<AuthenticationStateProvider,CookieAuthenticationState
 
 builder.Services.AddScoped(
     sp => (IAccountManagement)sp.GetRequiredService<AuthenticationStateProvider>());
-// builder.Services.AddScoped<SessionServices>();
-// builder.Services.AddScoped<UserServices>();
+
 typeof(Program).Assembly
     .GetTypes()
     .Where(t => !t.IsAbstract && t.IsClass && typeof(IService).IsAssignableFrom(t))

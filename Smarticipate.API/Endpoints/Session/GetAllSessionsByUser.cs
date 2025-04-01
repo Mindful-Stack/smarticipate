@@ -22,7 +22,20 @@ public class GetAllSessionsByUser : IEndpoint
         string SessionCode,
         DateTime? StartTime,
         DateTime? EndTime,
-        bool IsActive
+        bool IsActive,
+        List<QuestionDto> Questions
+    );
+
+    public record QuestionDto(
+        int Id,
+        int QuestionNumber,
+        List<ResponseDto> Responses
+    );
+
+    public record ResponseDto(
+        int Id,
+        int SelectedOption,
+        DateTime TimeStamp
     );
 
     private static async Task<IResult> Handler(
@@ -30,21 +43,36 @@ public class GetAllSessionsByUser : IEndpoint
         [FromServices] UserDbContext db)
     {
         var sessions = await db.Sessions
+            .Include(s => s.Questions)
+            .ThenInclude(q => q.Responses)
             .Where(s => s.UserId == userId)
             .OrderByDescending(s => s.StartTime)
-            .Select(s => new SessionResponse(
-                s.Id,
-                s.SessionCode,
-                s.StartTime,
-                s.EndTime,
-                s.EndTime == null
-            )).ToListAsync();
+            .ToListAsync();
 
         if (!sessions.Any())
         {
             return Results.NotFound();
         }
 
-        return Results.Ok(sessions);
+        var response = sessions
+            .Select(s => new SessionResponse(
+                s.Id,
+                s.SessionCode,
+                s.StartTime,
+                s.EndTime,
+                s.EndTime == null,
+                s.Questions
+                    .Select(q => new QuestionDto(
+                        q.Id,
+                        q.QuestionNumber,
+                        q.Responses.Select(r => new ResponseDto(
+                            r.Id,
+                            r.SelectedOption,
+                            r.TimeStamp
+                        )).ToList()
+                    )).ToList()
+            )).ToList();
+
+        return Results.Ok(response);
     }
 }

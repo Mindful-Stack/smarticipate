@@ -16,13 +16,34 @@ public class GetActiveSession : IEndpoint
             .Produces(StatusCodes.Status404NotFound);
     }
 
-    public record ActiveSessionResponse(string SessionCode);
+    public record ActiveSessionResponse(
+        int Id,
+        string SessionCode,
+        DateTime? StartTime,
+        string UserId,
+        bool IsActive,
+        List<QuestionDto> Questions
+        );
+    
+    public record QuestionDto(
+        int Id,
+        int QuestionNumber,
+        List<ResponseDto> Responses
+    );
+    
+    public record ResponseDto(
+        int Id,
+        int SelectedOption,
+        DateTime TimeStamp
+    );
 
     private static async Task<IResult> Handler(
         string userId, 
         [FromServices] UserDbContext db)
     {
         var session = await db.Sessions
+            .Include(s => s.Questions)
+            .ThenInclude(q => q.Responses)
             .Where(s => s.UserId == userId && s.EndTime == null)
             .OrderByDescending(s => s.StartTime)
             .FirstOrDefaultAsync();
@@ -31,7 +52,24 @@ public class GetActiveSession : IEndpoint
         {
             return Results.NotFound();
         }
+        
+        var response = new ActiveSessionResponse(
+            session.Id,
+            session.SessionCode,
+            session.StartTime,
+            session.UserId,
+            true,
+            session.Questions.Select(q => new QuestionDto(
+                q.Id,
+                q.QuestionNumber,
+                q.Responses.Select(r => new ResponseDto(
+                    r.Id,
+                    r.SelectedOption,
+                    r.TimeStamp
+                )).ToList()
+            )).ToList()
+        );
 
-        return Results.Ok(new ActiveSessionResponse(session.SessionCode));
+        return Results.Ok(response);
     }
 }
