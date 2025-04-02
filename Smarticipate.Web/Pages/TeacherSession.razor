@@ -3,6 +3,7 @@
 @inject SessionServices SessionServices
 @inject UserServices UserServices
 @inject QuestionServices QuestionServices
+@inject LiveSessionServices LiveSessionServices
 
 <div class="teacherSession">
     <div class="teacherSessionContent">
@@ -73,6 +74,7 @@
 
     protected override async Task OnInitializedAsync()
     {
+        await LiveSessionServices.InitializeConnection();
         await LoadActiveSession();
     }
 
@@ -88,6 +90,8 @@
                 {
                     _isInSession = true;
                     _sessionCode = activeSession.SessionCode;
+
+                    await LiveSessionServices.JoinSession(_sessionCode);
                 }
             }
         }
@@ -95,7 +99,7 @@
         {
             Console.WriteLine($"Error loading active session: {ex.Message}");
         }
-    }    
+    }
 
     private async Task StartSession()
     {
@@ -117,7 +121,11 @@
                 );
 
                 var success = await SessionServices.CreateSessionAsync(request);
-                if (!success)
+                if (success)
+                {
+                    await LiveSessionServices.JoinSession(_sessionCode);
+                }
+                else
                 {
                     _isInSession = false;
                     _sessionCode = string.Empty;
@@ -143,6 +151,12 @@
                 {
                     Console.WriteLine("Error updating session");
                 }
+
+                //Broadcast session end to connected clients
+                await LiveSessionServices.EndSession();
+
+                //Leave SignalR group
+                await LiveSessionServices.LeaveSession();
             }
         }
         catch (Exception ex)
@@ -156,7 +170,7 @@
             StopQuestionCountdown();
         }
     }
-    
+
     private async Task StartQuestionCountdown()
     {
         _countdownTime = _inputCountdownTime;
@@ -168,7 +182,18 @@
         if (!string.IsNullOrEmpty(_sessionCode))
         {
             var success = await QuestionServices.CreateQuestionAsync(_sessionCode);
-            if (!success)
+
+            if (success)
+            {
+                var sessionResponse = await SessionServices.GetSessionByCodeAsync(_sessionCode);
+                if (sessionResponse?.Questions.Any() == true)
+                {
+                    var latestQuestion = sessionResponse.Questions.OrderByDescending(q => q.QuestionNumber).First();
+
+                    await LiveSessionServices.StartQuestion(latestQuestion.Id, _initialCountdownTime);
+                }
+            }
+            else
             {
                 Console.WriteLine("Failed to create question");
             }
@@ -180,13 +205,19 @@
         }
 
         _countdownTimer = new Timer(
-            _ =>
+            async _ =>
             {
                 if (_countdownTime > 0)
                 {
                     _countdownTime--;
                     _countdownDisplay = TimeSpan.FromSeconds(_countdownTime).ToString(@"mm\:ss");
                     _progressPercentage = ((double)_countdownTime / _initialCountdownTime) * 100;
+
+                    if (_countdownTime % 5 == 0 || _countdownTime <= 10)
+                    {
+                        await LiveSessionServices.UpdateRemainingTime(_countdownTime);
+                    }
+
                     InvokeAsync(StateHasChanged);
                 }
                 else
@@ -210,6 +241,6 @@
         _countdownDisplay = "00:00";
         _progressPercentage = 100;
     }
-    
+
 
 }
