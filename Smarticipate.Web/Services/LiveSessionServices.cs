@@ -12,6 +12,7 @@ public class LiveSessionServices(NavigationManager navigationManager) : IAsyncDi
     public string? CurrentSessionCode { get; private set; }
 
     public event Action<int, int, int>? OnQuestionStarted;
+    public event Action? OnQuestionStopped;
     public event Action? OnSessionEnded;
     public event Action<int>? OnTimerUpdated;
 
@@ -30,6 +31,11 @@ public class LiveSessionServices(NavigationManager navigationManager) : IAsyncDi
                 }
             );
 
+            _hubConnection.On("QuestionStopped", () =>
+            {
+                OnQuestionStopped?.Invoke();
+            });
+            
             _hubConnection.On<int>("TimerUpdated", (remainingTime) =>
             {
                 OnTimerUpdated?.Invoke(remainingTime);
@@ -72,6 +78,14 @@ public class LiveSessionServices(NavigationManager navigationManager) : IAsyncDi
         if (IsConnected && !string.IsNullOrEmpty(CurrentSessionCode))
         {
             await _hubConnection!.InvokeAsync("StartQuestion", CurrentSessionCode, questionId, duration);
+        }
+    }
+
+    public async Task StopQuestion()
+    {
+        if (IsConnected && !string.IsNullOrEmpty(CurrentSessionCode))
+        {
+            await _hubConnection!.InvokeAsync("StopQuestion", CurrentSessionCode);
         }
     }
 

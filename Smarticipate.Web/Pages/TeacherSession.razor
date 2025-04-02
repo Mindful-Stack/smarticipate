@@ -1,9 +1,9 @@
 ﻿@page "/TeacherSession"
-@using Smarticipate.Web.Services
 @inject SessionServices SessionServices
 @inject UserServices UserServices
 @inject QuestionServices QuestionServices
 @inject LiveSessionServices LiveSessionServices
+@implements IAsyncDisposable
 
 <div class="teacherSession">
     <div class="teacherSessionContent">
@@ -234,13 +234,38 @@
         );
     }
 
-    private void StopQuestionCountdown()
+    private async Task StopQuestionCountdown()
     {
         _countdownTimer?.Dispose();
         _isTimerOn = false;
         _countdownDisplay = "00:00";
         _progressPercentage = 100;
+
+        if (!string.IsNullOrEmpty(_sessionCode))
+        {
+            await LiveSessionServices.StopQuestion();
+        }
     }
 
+    public async ValueTask DisposeAsync()
+    {
+        if (_countdownTimer is not null)
+        {
+            _countdownTimer.Dispose();
+            _countdownTimer = null;
+        }
+
+        if (_isInSession && !string.IsNullOrEmpty(_sessionCode))
+        {
+            try
+            {
+                await LiveSessionServices.LeaveSession();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error leaving session: {ex.Message}");
+            }
+        }
+    }
 
 }

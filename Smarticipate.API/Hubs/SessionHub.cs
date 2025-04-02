@@ -19,6 +19,11 @@ public class SessionHub : Hub
         await Clients.Group(sessionCode).SendAsync("QuestionStarted", questionId, duration, duration);
     }
 
+    public async Task StopQuestion(string sessionCode)
+    {
+        await Clients.Group(sessionCode).SendAsync("QuestionStopped");
+    }
+
     public async Task UpdateRemainingTime(string sessionCode, int remainingTime)
     {
         await Clients.Group(sessionCode).SendAsync("TimerUpdated", remainingTime);
