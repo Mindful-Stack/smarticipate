@@ -81,6 +81,7 @@ public class QuestionServices(IHttpClientFactory httpClientFactory) : IService
             return null;
         }
     }
+
     private class SessionResponse
     {
         public int Id { get; set; }
@@ -98,16 +99,16 @@ public class QuestionServices(IHttpClientFactory httpClientFactory) : IService
         public int QuestionNumber { get; set; }
         public DateTime? TimeStamp { get; set; }
         public int SessionId { get; set; }
-        public List<ResponseDto> Responses { get; set; }        
+        public List<ResponseDto> Responses { get; set; }
     }
-    
+
     // public class QuestionDto
     // {
     //     public int Id { get; set; }
     //     public int QuestionNumber { get; set; }
     //     public List<ResponseDto> Responses { get; set; } = new();
     // }
-    
+
     public class ResponseDto
     {
         public int Id { get; set; }

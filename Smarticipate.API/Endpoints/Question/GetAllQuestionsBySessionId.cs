@@ -11,7 +11,7 @@ public class GetAllQuestionsBySessionId : IEndpoint
     {
         app.MapGet("api/questions/{sessionId}", Handler)
             .WithTags("Questions")
-            .WithName("Get Questions by Session")
+            .WithName("Get Questions by Session Id")
             .WithOpenApi()
             .Produces<List<QuestionResponse>>(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status404NotFound);

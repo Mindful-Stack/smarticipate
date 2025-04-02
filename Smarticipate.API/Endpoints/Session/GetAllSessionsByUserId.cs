@@ -6,7 +6,7 @@ using Smarticipate.Core;
 
 namespace Smarticipate.API.Endpoints.Session;
 
-public class GetAllSessionsByUser : IEndpoint
+public class GetAllSessionsByUserId : IEndpoint
 {
     public static void MapEndpoint(IEndpointRouteBuilder app)
     {

@@ -31,6 +31,7 @@ public class CreateQuestion : IEndpoint
         )
     {
         var session = await db.Sessions.FindAsync(request.SessionId);
+        
         if (session is null)
         {
             throw new InvalidOperationException($"Session with ID {request.SessionId} not found");
