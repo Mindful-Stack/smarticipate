@@ -17,4 +17,12 @@
         <PackageReference Include="Scalar.AspNetCore" Version="2.1.1" />
     </ItemGroup>
 
+    <ItemGroup>
+      <ProjectReference Include="..\Smarticipate.Core\Smarticipate.Core.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="Migrations\" />
+    </ItemGroup>
+
 </Project>

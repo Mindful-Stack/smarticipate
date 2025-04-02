@@ -1,4 +1,8 @@
 ﻿@page "/TeacherSession"
+@using Smarticipate.Web.Services
+@inject SessionServices SessionServices
+@inject UserServices UserServices
+@inject QuestionServices QuestionServices
 
 <div class="teacherSession">
     <div class="teacherSessionContent">
@@ -18,21 +22,17 @@
                 {
                     <div class="activeSessionContainer">
                         <div class="sessionInfo">
-                            <h2 class="activeSessionTitle">Active Session: 1575950 </h2>
+                            <h2 class="activeSessionTitle">Active Session: @_sessionCode </h2>
                             <MudIconButton Class="stopIcon" Color="Color.Error"
                                            Icon="@Icons.Material.Outlined.StopCircle" Size="Size.Small"
-                                           aria-label="stop" OnClick="StopSession"/>
-                            @* <button class="submitBtn btnWithIcon stopBtn" onclick="@StopSession"> *@
-                            @*     <MudIcon Icon="@Icons.Material.Outlined.SmartDisplay" Style="width: 40px;"/> *@
-                            @*     Stop *@
-                            @* </button> *@
+                                           aria-label="stop" OnClick="EndSession"/>
                         </div>
-                        <div class="timer">sdtatus
+                        <div class="timer">
                             <div class="timerSetup">
                                 <h1 class="questionTimer">Question timer</h1>
                                 <input class="timerInput" type="number" min="0" @bind="@_inputCountdownTime">
                                 <button class="submitBtn btnWithIcon"
-                                        onclick="@(_isTimerOn ? StopCountdown : StartCountdown)">
+                                        onclick="@(_isTimerOn ? StopQuestionCountdown : StartQuestionCountdown)">
                                     <MudIcon Icon="@Icons.Material.Outlined.Timer" Style="width: 40px;"/>
                                     @(_isTimerOn ? "Stop" : "Start")
                                 </button>
@@ -54,13 +54,14 @@
                 </h2>
             </NotAuthorized>
         </AuthorizeView>
-
-
     </div>
 </div>
 
 @code {
     private bool _isInSession;
+    private string _sessionCode = string.Empty;
+    private Random _random = new();
+
     private bool _isTimerOn;
     private int _inputCountdownTime = 60;
     private int _countdownTime = 60;
@@ -68,28 +69,110 @@
     private int _initialCountdownTime;
     private double _progressPercentage = 100;
 
-
     private Timer? _countdownTimer;
-    // private int _CountdownTime
-    // {
-    //     get => _countdownTime;
-    //     set
-    //     {
-    //         if (value >= 0)
-    //         {
-    //             _countdownTime = value;
-    //             _countdownDisplay = TimeSpan.FromSeconds(_countdownTime).ToString(@"mm\:ss");
-    //         }
-    //     }
-    // }
 
-    private void StartCountdown()
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadActiveSession();
+    }
+
+    private async Task LoadActiveSession()
+    {
+        try
+        {
+            var userId = await UserServices.GetAuthenticatedUser();
+            if (!string.IsNullOrEmpty(userId))
+            {
+                var activeSession = await SessionServices.GetActiveSessionAsync(userId);
+                if (activeSession is not null)
+                {
+                    _isInSession = true;
+                    _sessionCode = activeSession.SessionCode;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading active session: {ex.Message}");
+        }
+    }    
+
+    private async Task StartSession()
+    {
+        _isInSession = true;
+        if (_isInSession)
+        {
+            int randomNumber = _random.Next(10000000, 99999999);
+            _sessionCode = randomNumber.ToString();
+
+            try
+            {
+                var userId = await UserServices.GetAuthenticatedUser();
+
+                var request = new SessionServices.SessionRequest(
+                    _sessionCode,
+                    DateTime.Now,
+                    null,
+                    userId
+                );
+
+                var success = await SessionServices.CreateSessionAsync(request);
+                if (!success)
+                {
+                    _isInSession = false;
+                    _sessionCode = string.Empty;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Exception when creating session: {ex.Message}");
+                _isInSession = false;
+                _sessionCode = string.Empty;
+            }
+        }
+    }
+
+    private async Task EndSession()
+    {
+        try
+        {
+            if (!string.IsNullOrEmpty(_sessionCode))
+            {
+                var success = await SessionServices.UpdateSessionAsync(_sessionCode);
+                if (!success)
+                {
+                    Console.WriteLine("Error updating session");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Exception when stopping session: {ex.Message}");
+        }
+        finally
+        {
+            _isInSession = false;
+            _sessionCode = string.Empty;
+            StopQuestionCountdown();
+        }
+    }
+    
+    private async Task StartQuestionCountdown()
     {
         _countdownTime = _inputCountdownTime;
         _initialCountdownTime = _inputCountdownTime;
         _countdownDisplay = TimeSpan.FromSeconds(_countdownTime).ToString(@"mm\:ss");
         _isTimerOn = true;
         _progressPercentage = 100;
+
+        if (!string.IsNullOrEmpty(_sessionCode))
+        {
+            var success = await QuestionServices.CreateQuestionAsync(_sessionCode);
+            if (!success)
+            {
+                Console.WriteLine("Failed to create question");
+            }
+        }
 
         if (_countdownTimer != null)
         {
@@ -120,23 +203,13 @@
         );
     }
 
-    private void StopCountdown()
+    private void StopQuestionCountdown()
     {
         _countdownTimer?.Dispose();
         _isTimerOn = false;
         _countdownDisplay = "00:00";
         _progressPercentage = 100;
     }
-
-    private void StartSession()
-    {
-        _isInSession = true;
-    }
-
-    private void StopSession()
-    {
-        _isInSession = false;
-        StopCountdown();
-    }
+    
 
 }
