@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Smarticipate.API.Data.Identity;
+using Smarticipate.Core;
 
 namespace Smarticipate.API.Endpoints.Session;
 
@@ -29,13 +30,16 @@ public class GetSessionBySessionCode : IEndpoint
     public record QuestionDto(
         int Id,
         int QuestionNumber,
+        DateTime? TimeStamp,
+        int SessionId,
         List<ResponseDto> Responses
     );
     
     public record ResponseDto(
         int Id,
-        int SelectedOption,
-        DateTime TimeStamp
+        ResponseOption SelectedOption,
+        DateTime TimeStamp,
+        int QuestionId
     );            
 
     private static async Task<IResult> Handler(
@@ -63,10 +67,13 @@ public class GetSessionBySessionCode : IEndpoint
             session.Questions.Select(q => new QuestionDto(
                 q.Id, 
                 q.QuestionNumber, 
+                q.TimeStamp,
+                q.SessionId,
                 q.Responses.Select(r => new ResponseDto(
                     r.Id, 
-                    r.SelectedOption, 
-                    r.TimeStamp
+                    (ResponseOption)r.SelectedOption, 
+                    r.TimeStamp,
+                    r.QuestionId
                     )).ToList()
                 )).ToList()
         );

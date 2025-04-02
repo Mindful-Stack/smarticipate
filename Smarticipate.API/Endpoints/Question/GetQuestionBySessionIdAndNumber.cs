@@ -5,15 +5,15 @@ using Smarticipate.Core;
 
 namespace Smarticipate.API.Endpoints.Question;
 
-public class GetAllQuestionsBySessionId : IEndpoint
+public class GetQuestionBySessionIdAndNumber : IEndpoint
 {
     public static void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapGet("api/questions/{sessionId}", Handler)
+        app.MapGet("api/questions/{sessionId}/{questionNumber}", Handler)
             .WithTags("Questions")
-            .WithName("Get Questions by Session")
+            .WithName("Get Question by Session ID and Question Number")
             .WithOpenApi()
-            .Produces<List<QuestionResponse>>(StatusCodes.Status200OK)
+            .Produces<QuestionResponse>(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status404NotFound);
     }
 
@@ -34,34 +34,33 @@ public class GetAllQuestionsBySessionId : IEndpoint
 
     private static async Task<IResult> Handler(
         int sessionId,
+        int questionNumber,
         [FromServices] UserDbContext db
     )
     {
-        var questions = await db.Questions
+        var question = await db.Questions
             .Include(q => q.Responses)
-            .Where(q => q.SessionId == sessionId)
-            .OrderByDescending(q => q.TimeStamp)
-            .ToListAsync();
+            .Where(q => q.SessionId == sessionId && q.QuestionNumber == questionNumber)
+            .FirstOrDefaultAsync();
 
-        if (!questions.Any())
+        if (question is null)
         {
             return Results.NotFound();
         }
 
-        var response = questions
-            .Select(q => new QuestionResponse(
-                q.Id,
-                q.QuestionNumber,
-                q.TimeStamp,
-                q.SessionId,
-                q.Responses
-                    .Select(r => new ResponseDto(
-                        r.Id,
-                        (ResponseOption)r.SelectedOption,
-                        r.TimeStamp,
-                        r.QuestionId
-                        )).ToList()
-            ));
+        var response = new QuestionResponse(
+            question.Id,
+            question.QuestionNumber,
+            question.TimeStamp,
+            question.SessionId,
+            question.Responses
+                .Select(r => new ResponseDto(
+                    r.Id,
+                    (ResponseOption)r.SelectedOption,
+                    r.TimeStamp,
+                    r.QuestionId
+                )).ToList()
+        );
 
         return Results.Ok(response);
     }

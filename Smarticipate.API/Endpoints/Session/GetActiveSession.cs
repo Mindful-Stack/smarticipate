@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Smarticipate.API.Data.Identity;
+using Smarticipate.Core;
 
 namespace Smarticipate.API.Endpoints.Session;
 
@@ -33,7 +34,7 @@ public class GetActiveSession : IEndpoint
     
     public record ResponseDto(
         int Id,
-        int SelectedOption,
+        ResponseOption SelectedOption,
         DateTime TimeStamp
     );
 
@@ -64,7 +65,7 @@ public class GetActiveSession : IEndpoint
                 q.QuestionNumber,
                 q.Responses.Select(r => new ResponseDto(
                     r.Id,
-                    r.SelectedOption,
+                    (ResponseOption)r.SelectedOption,
                     r.TimeStamp
                 )).ToList()
             )).ToList()

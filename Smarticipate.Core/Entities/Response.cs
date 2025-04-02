@@ -4,10 +4,18 @@ namespace Smarticipate.Core.Entities;
 
 public class Response
 {
- public int Id { get; set; }
- public int SelectedOption { get; set; }
- public DateTime TimeStamp { get; set; } = DateTime.Now;
+    public int Id { get; set; }
+    public int SelectedOption { get; set; }
 
- public int QuestionId { get; set; }
- public Question Question { get; set; } = null!;
+    [NotMapped]
+    public ResponseOption ResponseType
+    {
+        get => (ResponseOption)SelectedOption;
+        set => SelectedOption = (int)value;
+    }
+
+    public DateTime TimeStamp { get; set; } = DateTime.Now;
+
+    public int QuestionId { get; set; }
+    public Question Question { get; set; } = null!;
 }

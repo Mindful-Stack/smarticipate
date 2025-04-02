@@ -1,5 +1,6 @@
 ﻿using System.Net.Http.Json;
 using MudBlazor;
+using Smarticipate.Core;
 
 namespace Smarticipate.Web.Services;
 
@@ -116,13 +117,16 @@ public class SessionServices(IHttpClientFactory httpClientFactory) : IService
     {
         public int Id { get; set; }
         public int QuestionNumber { get; set; }
+        public DateTime? TimeStamp { get; set; }
+        public int SessionId { get; set; }
         public List<ResponseDto> Responses { get; set; } = new();
     }
 
     public record ResponseDto
     {
         public int Id { get; set; }
-        public int SelectedOption { get; set; }
+        public ResponseOption SelectedOption { get; set; }
         public DateTime TimeStamp { get; set; }
+        public int QuestionId { get; set; }
     }
 }

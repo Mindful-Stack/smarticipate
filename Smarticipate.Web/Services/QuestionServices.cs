@@ -1,4 +1,5 @@
 ﻿using System.Net.Http.Json;
+using Smarticipate.Core;
 
 namespace Smarticipate.Web.Services;
 
@@ -39,6 +40,47 @@ public class QuestionServices(IHttpClientFactory httpClientFactory) : IService
         }
     }
 
+    public async Task<List<QuestionResponse>?> GetAllQuestionsBySessionIdAsync(int sessionId)
+    {
+        try
+        {
+            var client = httpClientFactory.CreateClient("API");
+            var response = await client.GetAsync($"api/questions/{sessionId}");
+
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadFromJsonAsync<List<QuestionResponse>>();
+            }
+
+            return null;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Exception when retrieving questions: {ex.Message}");
+            return null;
+        }
+    }
+
+    public async Task<QuestionResponse> GetQuestionBySessionIdAndNumberAsync(int sessionId, int questionId)
+    {
+        try
+        {
+            var client = httpClientFactory.CreateClient("API");
+            var response = await client.GetAsync($"api/questions/{sessionId}/{questionId}");
+
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadFromJsonAsync<QuestionResponse>();
+            }
+
+            return null;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Exception when retrieving questions: {ex.Message}");
+            return null;
+        }
+    }
     private class SessionResponse
     {
         public int Id { get; set; }
@@ -47,20 +89,30 @@ public class QuestionServices(IHttpClientFactory httpClientFactory) : IService
         public DateTime? EndTime { get; set; }
         public string UserId { get; set; }
         public bool IsActive { get; set; }
-        public List<QuestionDto> Questions { get; set; } = new();
+        public List<QuestionResponse> Questions { get; set; } = new();
     }
 
-    private class QuestionDto
+    public class QuestionResponse
     {
         public int Id { get; set; }
         public int QuestionNumber { get; set; }
-        public List<ResponseDto> Responses { get; set; } = new();
+        public DateTime? TimeStamp { get; set; }
+        public int SessionId { get; set; }
+        public List<ResponseDto> Responses { get; set; }        
     }
     
-    private class ResponseDto
+    // public class QuestionDto
+    // {
+    //     public int Id { get; set; }
+    //     public int QuestionNumber { get; set; }
+    //     public List<ResponseDto> Responses { get; set; } = new();
+    // }
+    
+    public class ResponseDto
     {
         public int Id { get; set; }
-        public int SelectedOption { get; set; }
+        public ResponseOption SelectedOption { get; set; }
         public DateTime TimeStamp { get; set; }
+        public int QuestionId { get; set; }
     }
 }
