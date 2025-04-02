@@ -95,7 +95,7 @@ public class LiveSessionServices(NavigationManager navigationManager) : IAsyncDi
     {
         if (_hubConnection is not null)
         {
-            // await LeaveSession();
+            await LeaveSession();
             await _hubConnection.DisposeAsync();
         }
     }

@@ -19,11 +19,14 @@ builder.Services.AddScoped<AuthenticationStateProvider,CookieAuthenticationState
 builder.Services.AddScoped(
     sp => (IAccountManagement)sp.GetRequiredService<AuthenticationStateProvider>());
 
+//Adds all services that inherit from IService
 typeof(Program).Assembly
     .GetTypes()
     .Where(t => !t.IsAbstract && t.IsClass && typeof(IService).IsAssignableFrom(t))
     .ToList()
     .ForEach(type => builder.Services.AddScoped(type));
+
+builder.Services.AddScoped<LiveSessionServices>();
 
 builder.Services.AddOptions();
 builder.Services.AddHttpClient(

@@ -21,6 +21,7 @@ public class SessionServices(IHttpClientFactory httpClientFactory) : IService
         }
     }
 
+    //Get active session for a specific user
     public async Task<ActiveSessionResponse?> GetActiveSessionAsync(string userId)
     {
         try
@@ -48,6 +49,27 @@ public class SessionServices(IHttpClientFactory httpClientFactory) : IService
         }
     }
 
+    public async Task<SessionResponse> GetSessionByCodeAsync(string sessionCode)
+    {
+        try
+        {
+            var client = httpClientFactory.CreateClient("API");
+            var response = await client.GetAsync($"api/sessions/code/{Uri.EscapeDataString(sessionCode)}");
+
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadFromJsonAsync<SessionResponse>();
+            }
+
+            return null;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Exception when retrieving session: {ex.Message}");
+            return null;
+        }
+    }
+    
     public async Task<List<SessionResponse>> GetAllSessionsByUserAsync(string userId)
     {
         try
