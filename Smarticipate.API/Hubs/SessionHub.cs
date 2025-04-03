@@ -33,4 +33,9 @@ public class SessionHub : Hub
     {
         await Clients.Group(sessionCode).SendAsync("SessionEnded");
     }
+    
+    public async Task SendHeartbeat()
+    {
+        await Clients.Caller.SendAsync("Debug", "Heartbeat received");
+    }
 }

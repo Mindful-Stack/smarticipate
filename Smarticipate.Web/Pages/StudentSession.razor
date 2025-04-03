@@ -1,6 +1,374 @@
 ﻿@page "/StudentSession"
-<h3>StudentSession</h3>
+@inject NavigationManager Navigation
+@inject LiveSessionServices LiveSessionServices
+@inject SessionServices SessionServices
+@inject ResponseServices ResponseServices
+@implements IAsyncDisposable
+
+<div class="studentSession">
+        <div style="position: fixed; bottom: 10px; right: 10px;">
+            @if (LiveSessionServices.IsConnected)
+            {
+                <span style="color: green;">Connected</span>
+            }
+            else
+            {
+                <span style="color: red;">Disconnected</span>
+            }
+        </div>
+    <div class="studentSessionContent">
+        @if (_isLoading)
+        {
+            <MudProgressCircular Color="Color.Dark" Size="Size.Large"/>
+        }
+        else if (_isInSession && ActiveQuestionId.HasValue)
+        {
+            <div class="activeSessionContainer">
+                <h2 class="activeSessionTitle">Active Session: @_sessionCode </h2>
+                <MudIconButton Class="stopIcon" Color="Color.Error"
+                               Icon="@Icons.Material.Outlined.StopCircle" Size="Size.Small"
+                               aria-label="stop" OnClick="LeaveSession"/>
+            </div>
+            <div class="questionContainer">
+                <h1>Choose your response (Question #@ActiveQuestionId)</h1>
+                <div class="responseOptions">
+                    <button class="responseBtn tooSlow" @onclick="() => SubmitResponse(ResponseOption.TooSlow)"
+                            disabled="@_hasAnswered">
+                        <span class="optionText">Too Slow</span>
+                    </button>
+                    <button class="responseBtn perfect" @onclick="() => SubmitResponse(ResponseOption.Perfect)"
+                            disabled="@_hasAnswered">
+                        <span class="optionText">Perfect</span>
+                    </button>
+                    <button class="responseBtn tooFast" @onclick="() => SubmitResponse(ResponseOption.TooFast)"
+                            disabled="@_hasAnswered">
+                        <span class="optionText">Too Fast</span>
+                    </button>
+                </div>
+                <div class="timer">
+                    @* <MudProgressCircular Class="progressCircle" *@
+                    @*                      Color="@(_countdownTime < 20 ? (_countdownTime < 10 ? Color.Error : Color.Tertiary) : Color.Dark)" *@
+                    @*                      Style="width: 150px; height: 150px;" Value="@_progressPercentage"/> *@
+                    <h1 class="countDownRest">@_countdownDisplay</h1>
+                </div>
+            </div>
+        }
+        else if (_isInSession)
+        {
+            <div class="activeSessionContainer">
+                <h2 class="activeSessionTitle">Active Session: @_sessionCode </h2>
+                <MudIconButton Class="stopIcon" Color="Color.Error"
+                               Icon="@Icons.Material.Outlined.StopCircle" Size="Size.Small"
+                               aria-label="stop" OnClick="LeaveSession"/>
+            </div>
+            <div class="waitingContainer">
+                <h1>Waiting for next question...</h1>
+                <MudProgressCircular Indeterminate="true" Color="Color.Dark" Size="Size.Large"/>
+            </div>
+        }
+        else if (_sessionEnded)
+        {
+            <div class="sessionEndedCOntainer">
+                <h1>Session has ended</h1>
+                <p>Thank you for participating!</p>
+                <button class="submitBtn" onclick="@ResetSession">Join session</button>
+            </div>
+        }
+        else
+        {
+            <div class="joinSessionContainer">
+                <EditForm class="form" Model="_sessionCode" OnValidSubmit="JoinSession">
+
+                    <label>Enter session code</label>
+                    <InputText @bind-value="_sessionCode"/>
+                    <button class="submitBtn">Join</button>
+                </EditForm>
+            </div>
+        }
+    </div>
+    <div style="position: fixed; bottom: 40px; right: 10px; font-size: 12px; background-color: #f0f0f0; padding: 5px;">
+        isInSession: @_isInSession |
+        activeQuestionId: @(ActiveQuestionId?.ToString() ?? "null") |
+        hasAnswered: @_hasAnswered |
+        countdownTime: @_countdownTime
+    </div>
+</div>
 
 @code {
-    
+    private bool _isLoading = true;
+    private bool _isInSession = false;
+    private bool _sessionEnded = false;
+    private bool _hasAnswered = false;
+    private string _sessionCode = string.Empty;
+    private int? _activeQuestionId;
+    private int _countdownTime = 0;
+    private string _countdownDisplay = "00:00";
+
+    private int? ActiveQuestionId
+    {
+        get => _activeQuestionId;
+        set
+        {
+            if (_activeQuestionId != value)
+            {
+                _activeQuestionId = value;
+                Console.WriteLine($"ActiveQuestionId changed to {value}");
+                InvokeAsync(StateHasChanged);
+            }
+        }
+    }
+
+    private int CountdownTime
+    {
+        get => _countdownTime;
+        set
+        {
+            if (_countdownTime != value)
+            {
+                _countdownTime = value;
+                _countdownDisplay = TimeSpan.FromSeconds(value).ToString(@"mm\:ss");
+                Console.WriteLine($"CountdownTime changed to {value}, display: {_countdownDisplay}");
+                InvokeAsync(StateHasChanged);
+            }
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            // Make sure connection is fully established
+            if (!LiveSessionServices.IsConnected)
+            {
+                await LiveSessionServices.InitializeConnection();
+
+                // Add a small delay to ensure connection is fully established
+                await Task.Delay(500);
+            }
+
+            // Debug connection status
+            Console.WriteLine($"Hub connection state: {LiveSessionServices.IsConnected}, Connection ID: {LiveSessionServices._hubConnection?.ConnectionId ?? "unknown"}");
+
+            /// IMPORTANT: Only register handlers if connection is established
+            if (LiveSessionServices.IsConnected)
+            {
+                // Re-register event handlers to ensure they're connected
+                LiveSessionServices.OnQuestionStarted -= HandleQuestionStarted;
+                LiveSessionServices.OnQuestionStarted += HandleQuestionStarted;
+
+                LiveSessionServices.OnQuestionStopped -= HandleQuestionStopped;
+                LiveSessionServices.OnQuestionStopped += HandleQuestionStopped;
+
+                LiveSessionServices.OnTimerUpdated -= HandleTimerUpdated;
+                LiveSessionServices.OnTimerUpdated += HandleTimerUpdated;
+
+                LiveSessionServices.OnSessionEnded -= HandleSessionEnded;
+                LiveSessionServices.OnSessionEnded += HandleSessionEnded;
+
+                Console.WriteLine("Successfully registered all event handlers");
+            }
+            else
+            {
+                Console.WriteLine("WARNING: Could not register event handlers - connection not established");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error initializing connection: {ex.Message}");
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void HandleQuestionStarted(int questionId, int duration, int remainingTime)
+    {
+        Console.WriteLine($"*** HANDLING Question started: {questionId}, duration: {duration}, remaining: {remainingTime} ***");
+
+        InvokeAsync(() =>
+        {
+            ActiveQuestionId = null;
+            StateHasChanged();
+
+            ActiveQuestionId = questionId;
+            _hasAnswered = false;
+            CountdownTime = remainingTime;
+            // _countdownDisplay = TimeSpan.FromSeconds(_countdownTime).ToString(@"mm:ss");
+
+            Console.WriteLine($"Updated state: _isInSession={_isInSession}, _activeQuestionId={ActiveQuestionId}");
+
+            // Force UI update
+            StateHasChanged();
+
+            // Debug after update
+        });
+    }
+
+    private void HandleQuestionStopped()
+    {
+        // _activeQuestionId = null;
+        // _countdownDisplay = "00:00;";
+        // StateHasChanged();
+        InvokeAsync(() =>
+        {
+            ActiveQuestionId = null;
+            _countdownDisplay = "00:00;";
+            StateHasChanged(); // Notify Blazor
+        });
+    }
+
+    private void HandleTimerUpdated(int remainingTime)
+    {
+        InvokeAsync(() =>
+        {
+            CountdownTime = remainingTime;
+
+            if (remainingTime <= 0 && ActiveQuestionId.HasValue)
+            {
+                Console.WriteLine($"Time's up! {remainingTime}s remaining");
+                ActiveQuestionId = null;
+                StateHasChanged();
+            }
+            StateHasChanged(); // Notify Blazor
+        });
+    }
+
+    private void HandleSessionEnded()
+    {
+        // _isInSession = false;
+        // _sessionEnded = true;
+        // _activeQuestionId = null;
+        // StateHasChanged();
+        InvokeAsync(() =>
+        {
+            _isInSession = false;
+            _sessionEnded = true;
+            ActiveQuestionId = null;
+            StateHasChanged(); // Notify Blazor
+        });
+    }
+
+    private async Task JoinSession()
+    {
+        if (string.IsNullOrWhiteSpace(_sessionCode))
+        {
+            return;
+        }
+
+        _isLoading = true;
+        try
+        {
+            if (!LiveSessionServices.IsConnected)
+            {
+                await LiveSessionServices.InitializeConnection();
+                await Task.Delay(300); // Small delay to ensure connection is ready
+            }
+
+            var session = await SessionServices.GetSessionByCodeAsync(_sessionCode);
+            Console.WriteLine($"Session: {(session != null ? "Found" : "Not Found")}, Active: {session?.IsActive}");
+
+            if (session is not null && session.IsActive)
+            {
+                _isInSession = true;
+                _sessionEnded = false;
+
+                StateHasChanged();
+
+                await LiveSessionServices.JoinSession(_sessionCode);
+
+                var activeQuestion = session.Questions.FirstOrDefault(q => !q.TimeStamp.HasValue);
+                if (activeQuestion != null)
+                {
+                    ActiveQuestionId = activeQuestion.Id;
+                    _countdownDisplay = TimeSpan.FromSeconds(_countdownTime).ToString(@"mm\:ss");
+                    Console.WriteLine($"Found active question: {activeQuestion.Id}");
+                }
+
+                StateHasChanged();
+            }
+            else
+            {
+                Console.WriteLine("Session doesn't exist or is not active");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error joining session: {ex.Message}");
+            throw;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task LeaveSession()
+    {
+        if (_isInSession)
+        {
+            await LiveSessionServices.LeaveSession();
+            ResetSession();
+        }
+    }
+
+    private async Task ResetSession()
+    {
+        _sessionCode = string.Empty;
+        _isInSession = false;
+        _sessionEnded = false;
+        ActiveQuestionId = null;
+    }
+
+    private async Task SubmitResponse(ResponseOption option)
+    {
+        if (ActiveQuestionId.HasValue && !_hasAnswered)
+        {
+            await ResponseServices.CreateResponseAsync(ActiveQuestionId.Value, option);
+            _hasAnswered = true;
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        LiveSessionServices.OnQuestionStarted -= HandleQuestionStarted;
+        LiveSessionServices.OnQuestionStopped -= HandleQuestionStopped;
+        LiveSessionServices.OnTimerUpdated -= HandleTimerUpdated;
+        LiveSessionServices.OnSessionEnded -= HandleSessionEnded;
+
+        if (_isInSession)
+        {
+            await LiveSessionServices.LeaveSession();
+        }
+
+        if (_heartbeatTask is not null)
+        {
+            // We need a better way to cancel the task, but this helps
+            await Task.CompletedTask;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Set up a periodic heartbeat to keep the connection alive
+            _heartbeatTask = Task.Run(async () =>
+            {
+                while (true)
+                {
+                    await Task.Delay(15000); // 15 seconds
+                    await LiveSessionServices.SendHeartbeat();
+                }
+            });
+        }
+    }
+
+    private Task _heartbeatTask;
+
+}
+
+@{
+    Console.WriteLine($"Rendering StudentSession: _isInSession={_isInSession}, _activeQuestionId={ActiveQuestionId}");
 }
