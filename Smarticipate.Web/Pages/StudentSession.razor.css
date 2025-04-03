@@ -1,1 +1,155 @@
-﻿
+﻿.studentSession {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.studentSessionContent {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    justify-content: center;
+    height: 100%;
+    width: 100%;
+    align-items: center;
+}
+
+.activeSessionContainer {
+    display: flex;
+    align-self: flex-start;
+    padding: 2rem 0 0 2.5rem;
+    width: 100%;
+}
+
+.sessionInfo {
+    display: flex;
+    align-items: center;
+    height: max-content;
+    gap: .5rem;
+}
+
+.activeSessionTitle {
+    text-decoration: underline;
+    text-underline-offset: var(--underline-offest);
+}
+
+.waitingContainer, .questionContainer {
+    display: grid;
+    height: 100%;
+    align-content: center;
+    justify-items: center;
+    gap: 1rem;
+    margin-top: -6rem;
+}
+
+.logo {
+    animation: spin 2s linear infinite;
+    width: 100px;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.responseOptions {
+    display: flex;
+    gap: 2rem;
+}
+
+.responseBtn {
+    display: grid;
+    justify-items: center;
+    height: 15rem;
+    width: 15rem;
+    border-radius: var(--border-radius);
+    padding: var(--padding-box);
+    border: 3px solid var(--dark);
+    font-family: var(--ekwarg);
+    position: relative;
+
+    &::after {
+        content: '';
+        position: absolute;
+        bottom: -8px; /* Adjust offset from the bottom */
+        right: -8px; /* Adjust offset from the right */
+        width: 100%;
+        height: 100%;
+        border-bottom: 4px solid var(--dark); /* Simulated border - adjust color and thickness as needed */
+        border-right: 4px solid var(--dark); /* Simulated border - adjust color and thickness as needed */
+        border-radius: var(--border-radius);
+        z-index: -1; /* Ensure it stays behind the .navBtn */
+    }
+    
+    &:active{
+        transform: scale(.99);
+    }
+}
+
+#tooFast {
+    transition: border-color 300ms ease-in-out, box-shadow 300ms ease-in-out;
+
+    &:hover {
+        box-shadow: 0 0 20px var(--red);
+        border-color: var(--red);
+
+        &::after {
+            transition: border-color 300ms ease-in-out, box-shadow 300ms ease-in-out;
+            border-color: var(--red);
+        }
+    }
+}
+
+#perfect {
+    transition: border-color 300ms ease-in-out, box-shadow 300ms ease-in-out;
+
+    &:hover {
+        box-shadow: 0 0 20px var(--teal);
+        border-color: var(--teal);
+
+        &::after {
+            transition: border-color 300ms ease-in-out, box-shadow 300ms ease-in-out;
+            border-color: var(--teal);
+        }
+    }
+}
+
+#tooSlow {
+    transition: border-color 300ms ease-in-out, box-shadow 300ms ease-in-out;
+
+    &:hover {
+        box-shadow: 0 0 20px var(--orange);
+        border-color: var(--orange);
+
+        &::after {
+            transition: border-color 300ms ease-in-out, box-shadow 300ms ease-in-out;
+            border-color: var(--orange);
+        }
+    }
+}
+
+.responseBtnImage {
+    width: 100px;
+    filter: invert(15%) sepia(14%) saturate(1188%) hue-rotate(223deg) brightness(95%) contrast(92%);
+}
+
+.countdown {
+    display: flex;
+    justify-content: center;
+    align-items: end;
+    position: relative;
+}
+
+.countDownRest {
+    position: absolute;
+    margin-bottom: 3.5rem;
+    font-family: var(--ekwarg);
+}
+
+
+
+

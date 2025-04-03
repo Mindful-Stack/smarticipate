@@ -6,16 +6,16 @@
 @implements IAsyncDisposable
 
 <div class="studentSession">
-        <div style="position: fixed; bottom: 10px; right: 10px;">
-            @if (LiveSessionServices.IsConnected)
-            {
-                <span style="color: green;">Connected</span>
-            }
-            else
-            {
-                <span style="color: red;">Disconnected</span>
-            }
-        </div>
+    @* <div style="position: fixed; bottom: 10px; right: 10px;"> *@
+    @*     @if (LiveSessionServices.IsConnected) *@
+    @*     { *@
+    @*         <span style="color: green;">Connected</span> *@
+    @*     } *@
+    @*     else *@
+    @*     { *@
+    @*         <span style="color: red;">Disconnected</span> *@
+    @*     } *@
+    @* </div> *@
     <div class="studentSessionContent">
         @if (_isLoading)
         {
@@ -24,51 +24,73 @@
         else if (_isInSession && ActiveQuestionId.HasValue)
         {
             <div class="activeSessionContainer">
-                <h2 class="activeSessionTitle">Active Session: @_sessionCode </h2>
-                <MudIconButton Class="stopIcon" Color="Color.Error"
-                               Icon="@Icons.Material.Outlined.StopCircle" Size="Size.Small"
-                               aria-label="stop" OnClick="LeaveSession"/>
+                <div class="sessionInfo">
+                    <h2 class="activeSessionTitle">Active Session: @_sessionCode </h2>
+                    <MudIconButton Class="stopIcon" Color="Color.Error"
+                                   Icon="@Icons.Material.Outlined.ExitToApp" Size="Size.Small"
+                                   aria-label="stop" OnClick="LeaveSession"/>
+                </div>
             </div>
             <div class="questionContainer">
                 <h1>Choose your response (Question #@ActiveQuestionId)</h1>
                 <div class="responseOptions">
-                    <button class="responseBtn tooSlow" @onclick="() => SubmitResponse(ResponseOption.TooSlow)"
+                    <button id="tooFast" class="responseBtn tooFast"
+                            @onclick="() => SubmitResponse(ResponseOption.TooFast)"
                             disabled="@_hasAnswered">
-                        <span class="optionText">Too Slow</span>
+                        <img class="responseBtnImage" src="images/cheetah.svg"
+                             alt="Too fast - cheetah"/>
+                        <p class="optionText">Even cheetahs need to pace themselves. Let's take a breather.</p>
                     </button>
-                    <button class="responseBtn perfect" @onclick="() => SubmitResponse(ResponseOption.Perfect)"
+                    <button id="perfect" class="responseBtn perfect"
+                            @onclick="() => SubmitResponse(ResponseOption.Perfect)"
                             disabled="@_hasAnswered">
-                        <span class="optionText">Perfect</span>
+                        <img class="responseBtnImage" src="images/metronome.svg" alt="Perfect - metronome"/>
+                        <p class="optionText">I’m in a groove, right now!</p>
                     </button>
-                    <button class="responseBtn tooFast" @onclick="() => SubmitResponse(ResponseOption.TooFast)"
+                    <button id="tooSlow" class="responseBtn tooSlow"
+                            @onclick="() => SubmitResponse(ResponseOption.TooSlow)"
                             disabled="@_hasAnswered">
-                        <span class="optionText">Too Fast</span>
+                        <img class="responseBtnImage" src="images/sloth.svg" alt="Too slow - sloth"/>
+                        <p class="optionText">We're moving slower than a herd of sloths stampeding through peanut
+                            butter! Let's pick it up!</p>
                     </button>
+
                 </div>
-                <div class="timer">
+                <div class="countdown">
                     @* <MudProgressCircular Class="progressCircle" *@
                     @*                      Color="@(_countdownTime < 20 ? (_countdownTime < 10 ? Color.Error : Color.Tertiary) : Color.Dark)" *@
                     @*                      Style="width: 150px; height: 150px;" Value="@_progressPercentage"/> *@
+                    <MudProgressCircular Class="progressCircle"
+                                         Color="@(_countdownTime < 20 ? (_countdownTime < 10 ? Color.Error : Color.Tertiary) : Color.Dark)"
+                                         Style="width: 150px; height: 150px;" Indeterminate="true"/>
                     <h1 class="countDownRest">@_countdownDisplay</h1>
                 </div>
             </div>
         }
-        else if (_isInSession)
+        else if (_isInSession || _hasAnswered)
         {
             <div class="activeSessionContainer">
                 <h2 class="activeSessionTitle">Active Session: @_sessionCode </h2>
+
                 <MudIconButton Class="stopIcon" Color="Color.Error"
-                               Icon="@Icons.Material.Outlined.StopCircle" Size="Size.Small"
+                               Icon="@Icons.Material.Outlined.ExitToApp" Size="Size.Small"
                                aria-label="stop" OnClick="LeaveSession"/>
+
             </div>
             <div class="waitingContainer">
+                @if (_hasAnswered)
+                {
+                    <h3>Thank you for your answer!</h3>
+                }
                 <h1>Waiting for next question...</h1>
-                <MudProgressCircular Indeterminate="true" Color="Color.Dark" Size="Size.Large"/>
+                @* <MudProgressCircular Class="waitSpinner" Indeterminate="true" Color="Color.Dark" Style="width: 100px; height: 100px;"/> *@
+                <img class="logo" src="images/smarticipate-logo.png"/>
+
             </div>
         }
         else if (_sessionEnded)
         {
-            <div class="sessionEndedCOntainer">
+            <div class="sessionEndedContainer">
                 <h1>Session has ended</h1>
                 <p>Thank you for participating!</p>
                 <button class="submitBtn" onclick="@ResetSession">Join session</button>
@@ -77,12 +99,13 @@
         else
         {
             <div class="joinSessionContainer">
-                <EditForm class="form" Model="_sessionCode" OnValidSubmit="JoinSession">
-
-                    <label>Enter session code</label>
-                    <InputText @bind-value="_sessionCode"/>
-                    <button class="submitBtn">Join</button>
-                </EditForm>
+                <div class="form">
+                    <div class="formField">
+                        <label>Enter session code</label>
+                        <input type="text" id="inputText" @bind="_sessionCode" @bind:event="oninput"/>
+                        <button class="submitBtn" onclick="@JoinSession">Join</button>
+                    </div>
+                </div>
             </div>
         }
     </div>
@@ -103,6 +126,7 @@
     private int? _activeQuestionId;
     private int _countdownTime = 0;
     private string _countdownDisplay = "00:00";
+
 
     private int? ActiveQuestionId
     {
@@ -202,7 +226,6 @@
             // Force UI update
             StateHasChanged();
 
-            // Debug after update
         });
     }
 
@@ -214,6 +237,7 @@
         InvokeAsync(() =>
         {
             ActiveQuestionId = null;
+            _hasAnswered = false;
             _countdownDisplay = "00:00;";
             StateHasChanged(); // Notify Blazor
         });
@@ -231,6 +255,7 @@
                 ActiveQuestionId = null;
                 StateHasChanged();
             }
+
             StateHasChanged(); // Notify Blazor
         });
     }
@@ -274,16 +299,17 @@
                 _isInSession = true;
                 _sessionEnded = false;
 
-                StateHasChanged();
-
                 await LiveSessionServices.JoinSession(_sessionCode);
 
                 var activeQuestion = session.Questions.FirstOrDefault(q => !q.TimeStamp.HasValue);
-                if (activeQuestion != null)
+                
+                //TODO: fix join session when session is terminated or started
+                if (activeQuestion != null) 
                 {
-                    ActiveQuestionId = activeQuestion.Id;
-                    _countdownDisplay = TimeSpan.FromSeconds(_countdownTime).ToString(@"mm\:ss");
                     Console.WriteLine($"Found active question: {activeQuestion.Id}");
+                    ActiveQuestionId = activeQuestion.Id;
+                    _countdownDisplay = TimeSpan.FromSeconds(CountdownTime).ToString(@"mm\:ss");
+                    StateHasChanged();
                 }
 
                 StateHasChanged();
@@ -327,6 +353,8 @@
         {
             await ResponseServices.CreateResponseAsync(ActiveQuestionId.Value, option);
             _hasAnswered = true;
+            ActiveQuestionId = null;
+            StateHasChanged();
         }
     }
 

@@ -38,4 +38,4 @@ public class SessionHub : Hub
     {
         await Clients.Caller.SendAsync("Debug", "Heartbeat received");
     }
-}
+    }
