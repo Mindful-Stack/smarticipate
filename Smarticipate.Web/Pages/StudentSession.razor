@@ -32,7 +32,7 @@
                 </div>
             </div>
             <div class="questionContainer">
-                <h1>Choose your response (Question #@ActiveQuestionId)</h1>
+                <h1>Choose your response (Question #@CurrentQuestionNumber)</h1>
                 <div class="responseOptions">
                     <button id="tooFast" class="responseBtn tooFast"
                             @onclick="() => SubmitResponse(ResponseOption.TooFast)"
@@ -124,10 +124,10 @@
     private bool _hasAnswered = false;
     private string _sessionCode = string.Empty;
     private int? _activeQuestionId;
+    private int _currentQuestionNumber;
     private int _countdownTime = 0;
     private string _countdownDisplay = "00:00";
-
-
+ 
     private int? ActiveQuestionId
     {
         get => _activeQuestionId;
@@ -142,6 +142,19 @@
         }
     }
 
+    private int CurrentQuestionNumber
+    {
+        get => _currentQuestionNumber;
+        set
+        {
+            if (_currentQuestionNumber != value)
+            {
+                _currentQuestionNumber = value;
+                InvokeAsync(StateHasChanged);
+            }
+        }
+    }
+    
     private int CountdownTime
     {
         get => _countdownTime;
@@ -211,12 +224,32 @@
     {
         Console.WriteLine($"*** HANDLING Question started: {questionId}, duration: {duration}, remaining: {remainingTime} ***");
 
-        InvokeAsync(() =>
+        InvokeAsync(async() =>
         {
             ActiveQuestionId = null;
             StateHasChanged();
 
             ActiveQuestionId = questionId;
+            Console.WriteLine($"This is the current session code: {_sessionCode}");
+            
+            if (!string.IsNullOrEmpty(_sessionCode))
+            {
+                var sessionResponse = await SessionServices.GetSessionByCodeAsync(_sessionCode);
+                var question = sessionResponse?.Questions.FirstOrDefault(q => q.Id == questionId);
+
+                if (question is not null)
+                {
+                    
+                CurrentQuestionNumber = question.QuestionNumber;
+                Console.WriteLine($"current question number: {CurrentQuestionNumber}");
+                }
+                else
+                {
+                    CurrentQuestionNumber = 0;
+                }
+                
+            }
+          
             _hasAnswered = false;
             CountdownTime = remainingTime;
             // _countdownDisplay = TimeSpan.FromSeconds(_countdownTime).ToString(@"mm:ss");
@@ -238,7 +271,7 @@
         {
             ActiveQuestionId = null;
             _hasAnswered = false;
-            _countdownDisplay = "00:00;";
+            _countdownDisplay = "00:00";
             StateHasChanged(); // Notify Blazor
         });
     }
@@ -302,7 +335,7 @@
                 await LiveSessionServices.JoinSession(_sessionCode);
 
                 //new pattern syntax for conditions for FirstOrDefault
-                var activeQuestion = session.Questions.FirstOrDefault(q => q is { StartTime: not null, EndTime: null });
+                var activeQuestion = session.Questions.OrderByDescending(q => q.StartTime).FirstOrDefault(q => q is { StartTime: not null, EndTime: null });
                 
                 //TODO: fix join session when session is terminated or started
                 if (activeQuestion != null) 

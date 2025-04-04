@@ -145,7 +145,12 @@ public class LiveSessionServices(NavigationManager navigationManager) : IAsyncDi
             catch (Exception ex)
             {
                 Console.WriteLine($"Error sending heartbeat: {ex.Message}");
+                throw;
             }
+        }
+        else
+        {
+            throw new InvalidOperationException("Connection is not active");
         }
     }
     

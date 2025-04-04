@@ -69,6 +69,8 @@
     private string _countdownDisplay = "00:00";
     private int _initialCountdownTime;
     private double _progressPercentage = 100;
+    private Timer? _heartbeatTimer;
+    private readonly int _heartbeatInterval = 15000;
 
     private Timer? _countdownTimer;
 
@@ -76,6 +78,8 @@
     {
         await LiveSessionServices.InitializeConnection();
         await LoadActiveSession();
+        await CloseActiveQuestionsAsync();
+        StartHeartbeatTimer();
     }
 
     private async Task LoadActiveSession()
@@ -278,8 +282,63 @@
         }
     }
 
+    private void StartHeartbeatTimer()
+    {
+        _heartbeatTimer = new Timer(
+            async _ =>
+            {
+                if (_isInSession && LiveSessionServices.IsConnected)
+                {
+                    try
+                    {
+                        await LiveSessionServices.SendHeartbeat();
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Heartbeat error: {ex.Message}");
+                        await CloseActiveQuestionsAsync();
+                    }
+                }
+            },null, _heartbeatInterval, _heartbeatInterval
+        );
+    }
+
+    private async Task CloseActiveQuestionsAsync()
+    {
+        if (!string.IsNullOrEmpty(_sessionCode))
+        {
+            try
+            {
+                var session = await SessionServices.GetSessionByCodeAsync(_sessionCode);
+                if (session?.Questions?.Any() == true)
+                {
+                    var activeQuestions = session.Questions
+                        .Where(q => q.StartTime.HasValue && !q.EndTime.HasValue)
+                        .ToList();
+
+                    foreach (var question in activeQuestions)
+                    {
+                        await QuestionServices.UpdateQuestionEndTimeAsync(question.Id, DateTime.Now);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error closing active questions: {ex.Message}");
+            }
+        }
+    }
+
     public async ValueTask DisposeAsync()
     {
+        _heartbeatTimer?.Dispose();
+        _heartbeatTimer = null;
+        
+        if (_isInSession && _isTimerOn)
+        {
+            await StopQuestionCountdown();
+        }
+        
         if (_countdownTimer is not null)
         {
             _countdownTimer.Dispose();
@@ -290,6 +349,20 @@
         {
             try
             {
+                var session = await SessionServices.GetSessionByCodeAsync(_sessionCode);
+                if (session?.Questions?.Any() == true)
+                {
+                    var activeQuestions = session.Questions
+                        .Where(q => q.StartTime.HasValue && !q.EndTime.HasValue)
+                        .ToList();
+
+                    foreach (var question in activeQuestions)
+                    {
+                        await QuestionServices.UpdateQuestionEndTimeAsync(question.Id, DateTime.Now);
+                    }
+                }
+                
+                await LiveSessionServices.EndSession();
                 await LiveSessionServices.LeaveSession();
             }
             catch (Exception ex)
