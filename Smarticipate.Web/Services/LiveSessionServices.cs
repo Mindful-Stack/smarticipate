@@ -15,6 +15,22 @@ public class LiveSessionServices(NavigationManager navigationManager) : IAsyncDi
     public event Action? OnQuestionStopped;
     public event Action? OnSessionEnded;
     public event Action<int>? OnTimerUpdated;
+    public event Action? OnTeacherDisconnected;
+   
+   
+    public async Task RegisterAsTeacher(string sessionCode)
+    {
+        if (_hubConnection is null)
+        {
+            await InitializeConnection();
+        }
+
+        if (IsConnected)
+        {
+            await _hubConnection!.InvokeAsync("RegisterAsTeacher", sessionCode);
+            CurrentSessionCode = sessionCode;
+        }
+    }
 
     public async Task InitializeConnection()
     {
@@ -32,6 +48,12 @@ public class LiveSessionServices(NavigationManager navigationManager) : IAsyncDi
             //debug handler
             _hubConnection.On<string>("Debug", (message) => {
                 Console.WriteLine($"SignalR Debug: {message}");
+            });
+
+            _hubConnection.On("TeacherDisconnected", () =>
+            {
+                Console.WriteLine("Teacher disconnected unexpectedly");
+                OnTeacherDisconnected?.Invoke();
             });
             
             _hubConnection.On<int, int, int>("QuestionStarted", (questionId, duration, remainingTime) =>

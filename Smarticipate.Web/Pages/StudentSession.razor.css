@@ -33,6 +33,9 @@
     text-underline-offset: var(--underline-offest);
 }
 
+
+/* ########## WAITING ########## */
+
 .waitingContainer, .questionContainer {
     display: grid;
     height: 100%;
@@ -55,6 +58,8 @@
         transform: rotate(360deg);
     }
 }
+
+/* ########## ACTIVE QUESTION ##########*/
 
 .responseOptions {
     display: flex;
@@ -84,8 +89,8 @@
         border-radius: var(--border-radius);
         z-index: -1; /* Ensure it stays behind the .navBtn */
     }
-    
-    &:active{
+
+    &:active {
         transform: scale(.99);
     }
 }
@@ -150,6 +155,40 @@
     font-family: var(--ekwarg);
 }
 
+/* ########## SESSION ENDED ########## */
+
+.sessionEndedContainer {
+    margin-top: -6rem;
+    display: grid;
+    gap: 1rem;
+    justify-items: center;
+}
+
+.participation {
+    color: var(--teal);
+}
 
 
+/* ########## JOIN SESSION ########## */
 
+.joinSessionContainer {
+    margin-top: -6rem;
+}
+
+.joinForm{
+    display: grid;
+    width: 100%;
+    justify-items: center;
+    grid-template-rows: repeat(3, auto) 1.5rem;
+    grid-template-columns: 1fr;
+}
+
+.joinTitle{
+    font-size: 2rem;
+}
+
+.errorMessage {
+    color: var(--red);
+    text-align: center;    
+    min-height: 1.2rem;
+}

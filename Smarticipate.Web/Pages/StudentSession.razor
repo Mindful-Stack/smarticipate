@@ -6,16 +6,6 @@
 @implements IAsyncDisposable
 
 <div class="studentSession">
-    @* <div style="position: fixed; bottom: 10px; right: 10px;"> *@
-    @*     @if (LiveSessionServices.IsConnected) *@
-    @*     { *@
-    @*         <span style="color: green;">Connected</span> *@
-    @*     } *@
-    @*     else *@
-    @*     { *@
-    @*         <span style="color: red;">Disconnected</span> *@
-    @*     } *@
-    @* </div> *@
     <div class="studentSessionContent">
         @if (_isLoading)
         {
@@ -92,7 +82,7 @@
         {
             <div class="sessionEndedContainer">
                 <h1>Session has ended</h1>
-                <p>Thank you for participating!</p>
+                <h3 class="participation">Thank you for participating!</h3>
                 <button class="submitBtn" onclick="@ResetSession">Join session</button>
             </div>
         }
@@ -100,10 +90,14 @@
         {
             <div class="joinSessionContainer">
                 <div class="form">
-                    <div class="formField">
-                        <label>Enter session code</label>
+                    <div class="formField joinForm">
+                        <label class="joinTitle">Enter session code</label>
                         <input type="text" id="inputText" @bind="_sessionCode" @bind:event="oninput"/>
                         <button class="submitBtn" onclick="@JoinSession">Join</button>
+                        @if (!string.IsNullOrEmpty(_errorMessage))
+                        {
+                            <p class="errorMessage">@_errorMessage</p>
+                        }
                     </div>
                 </div>
             </div>
@@ -127,7 +121,8 @@
     private int _currentQuestionNumber;
     private int _countdownTime = 0;
     private string _countdownDisplay = "00:00";
- 
+    private string _errorMessage = string.Empty;
+
     private int? ActiveQuestionId
     {
         get => _activeQuestionId;
@@ -154,7 +149,7 @@
             }
         }
     }
-    
+
     private int CountdownTime
     {
         get => _countdownTime;
@@ -203,6 +198,10 @@
                 LiveSessionServices.OnSessionEnded -= HandleSessionEnded;
                 LiveSessionServices.OnSessionEnded += HandleSessionEnded;
 
+                LiveSessionServices.OnTeacherDisconnected -= HandleTeacherDisconnected;
+                LiveSessionServices.OnTeacherDisconnected += HandleTeacherDisconnected;
+
+
                 Console.WriteLine("Successfully registered all event handlers");
             }
             else
@@ -224,14 +223,14 @@
     {
         Console.WriteLine($"*** HANDLING Question started: {questionId}, duration: {duration}, remaining: {remainingTime} ***");
 
-        InvokeAsync(async() =>
+        InvokeAsync(async () =>
         {
             ActiveQuestionId = null;
             StateHasChanged();
 
             ActiveQuestionId = questionId;
             Console.WriteLine($"This is the current session code: {_sessionCode}");
-            
+
             if (!string.IsNullOrEmpty(_sessionCode))
             {
                 var sessionResponse = await SessionServices.GetSessionByCodeAsync(_sessionCode);
@@ -239,17 +238,15 @@
 
                 if (question is not null)
                 {
-                    
-                CurrentQuestionNumber = question.QuestionNumber;
-                Console.WriteLine($"current question number: {CurrentQuestionNumber}");
+                    CurrentQuestionNumber = question.QuestionNumber;
+                    Console.WriteLine($"current question number: {CurrentQuestionNumber}");
                 }
                 else
                 {
                     CurrentQuestionNumber = 0;
                 }
-                
             }
-          
+
             _hasAnswered = false;
             CountdownTime = remainingTime;
             // _countdownDisplay = TimeSpan.FromSeconds(_countdownTime).ToString(@"mm:ss");
@@ -258,7 +255,6 @@
 
             // Force UI update
             StateHasChanged();
-
         });
     }
 
@@ -308,14 +304,38 @@
         });
     }
 
+    private void HandleTeacherDisconnected()
+    {
+        try
+        {
+            InvokeAsync(() =>
+            {
+                Console.WriteLine("StudentSession: Processing teacher disconnection");
+
+                _isInSession = false;
+                _sessionEnded = true;
+                _activeQuestionId = null;
+                Console.WriteLine("StudentSession: Updated state, calling StateHasChanged");
+                StateHasChanged();
+            });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error handling teacher disconnection: {ex.Message}");
+        }
+    }
+
     private async Task JoinSession()
     {
         if (string.IsNullOrWhiteSpace(_sessionCode))
         {
+            _errorMessage = "Please enter a session code";
             return;
         }
 
-        _isLoading = true;
+        // _isLoading = true;
+        _errorMessage = string.Empty;
+        
         try
         {
             if (!LiveSessionServices.IsConnected)
@@ -329,6 +349,8 @@
 
             if (session is not null && session.IsActive)
             {
+                _isLoading = true;
+                
                 _isInSession = true;
                 _sessionEnded = false;
 
@@ -336,9 +358,9 @@
 
                 //new pattern syntax for conditions for FirstOrDefault
                 var activeQuestion = session.Questions.OrderByDescending(q => q.StartTime).FirstOrDefault(q => q is { StartTime: not null, EndTime: null });
-                
+
                 //TODO: fix join session when session is terminated or started
-                if (activeQuestion != null) 
+                if (activeQuestion != null)
                 {
                     Console.WriteLine($"Found active question: {activeQuestion.Id}");
                     ActiveQuestionId = activeQuestion.Id;
@@ -350,12 +372,14 @@
             }
             else
             {
+                _errorMessage = "No active session found with that code.";
                 Console.WriteLine("Session doesn't exist or is not active");
             }
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Error joining session: {ex.Message}");
+            _errorMessage = "Error joining session. Please try again.";
             throw;
         }
         finally
@@ -398,6 +422,7 @@
         LiveSessionServices.OnQuestionStopped -= HandleQuestionStopped;
         LiveSessionServices.OnTimerUpdated -= HandleTimerUpdated;
         LiveSessionServices.OnSessionEnded -= HandleSessionEnded;
+        LiveSessionServices.OnTeacherDisconnected -= HandleTeacherDisconnected;
 
         if (_isInSession)
         {
@@ -428,7 +453,6 @@
     }
 
     private Task _heartbeatTask;
-
 }
 
 @{

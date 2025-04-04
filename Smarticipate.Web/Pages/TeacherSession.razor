@@ -78,6 +78,13 @@
     {
         await LiveSessionServices.InitializeConnection();
         await LoadActiveSession();
+
+        if (!string.IsNullOrEmpty(_sessionCode))
+        {
+            await LiveSessionServices.JoinSession(_sessionCode);
+            LiveSessionServices.RegisterAsTeacher(_sessionCode);
+        }
+        
         await CloseActiveQuestionsAsync();
         StartHeartbeatTimer();
     }
