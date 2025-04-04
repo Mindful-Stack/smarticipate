@@ -40,7 +40,7 @@ public class CreateQuestion : IEndpoint
         var newQuestion = new Core.Entities.Question
         {
             QuestionNumber = request.QuestionNumber,
-            TimeStamp = request.TimeStamp ?? DateTime.Now,
+            // TimeStamp = request.TimeStamp ?? DateTime.Now,
             SessionId = request.SessionId
         };
 

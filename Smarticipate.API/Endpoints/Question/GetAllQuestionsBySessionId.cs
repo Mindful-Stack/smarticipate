@@ -20,7 +20,8 @@ public class GetAllQuestionsBySessionId : IEndpoint
     private record QuestionResponse(
         int Id,
         int QuestionNumber,
-        DateTime? TimeStamp,
+        DateTime? StartTime,
+        DateTime? EndTime,
         int SessionId,
         List<ResponseDto> Responses
     );
@@ -40,7 +41,7 @@ public class GetAllQuestionsBySessionId : IEndpoint
         var questions = await db.Questions
             .Include(q => q.Responses)
             .Where(q => q.SessionId == sessionId)
-            .OrderByDescending(q => q.TimeStamp)
+            // .OrderByDescending(q => q.TimeStamp)
             .ToListAsync();
 
         if (!questions.Any())
@@ -52,7 +53,8 @@ public class GetAllQuestionsBySessionId : IEndpoint
             .Select(q => new QuestionResponse(
                 q.Id,
                 q.QuestionNumber,
-                q.TimeStamp,
+                q.StartTime,
+                q.EndTime,
                 q.SessionId,
                 q.Responses
                     .Select(r => new ResponseDto(

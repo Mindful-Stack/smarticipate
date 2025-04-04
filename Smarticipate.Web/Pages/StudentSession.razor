@@ -301,7 +301,8 @@
 
                 await LiveSessionServices.JoinSession(_sessionCode);
 
-                var activeQuestion = session.Questions.FirstOrDefault(q => !q.TimeStamp.HasValue);
+                //new pattern syntax for conditions for FirstOrDefault
+                var activeQuestion = session.Questions.FirstOrDefault(q => q is { StartTime: not null, EndTime: null });
                 
                 //TODO: fix join session when session is terminated or started
                 if (activeQuestion != null) 

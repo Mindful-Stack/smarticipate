@@ -26,7 +26,7 @@ public class QuestionServices(IHttpClientFactory httpClientFactory) : IService
             var request = new
             {
                 QuestionNumber = nextQuestionNumber,
-                TimeStamp = DateTime.Now,
+                StartTime = DateTime.Now,
                 SessionId = sessionResponse.Id
             };
 
@@ -82,6 +82,27 @@ public class QuestionServices(IHttpClientFactory httpClientFactory) : IService
         }
     }
 
+    public async Task<bool> UpdateQuestionEndTimeAsync(int questionId, DateTime endTime)
+    {
+        try
+        {
+            var client = httpClientFactory.CreateClient("API");
+
+            var request = new
+            {
+                EndTime = endTime
+            };
+
+            var response = await client.PutAsJsonAsync($"api/questions/{questionId}", request);
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Exception when updating question: {ex.Message}");
+            return false;
+        }
+    }
+    
     private class SessionResponse
     {
         public int Id { get; set; }
@@ -97,7 +118,8 @@ public class QuestionServices(IHttpClientFactory httpClientFactory) : IService
     {
         public int Id { get; set; }
         public int QuestionNumber { get; set; }
-        public DateTime? TimeStamp { get; set; }
+        public DateTime? StartTime { get; set; }
+        public DateTime? EndTime { get; set; }
         public int SessionId { get; set; }
         public List<ResponseDto> Responses { get; set; }
     }

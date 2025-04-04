@@ -30,7 +30,8 @@ public class GetSessionBySessionCode : IEndpoint
     public record QuestionDto(
         int Id,
         int QuestionNumber,
-        DateTime? TimeStamp,
+        DateTime? StartTime,
+        DateTime? EndTime,
         int SessionId,
         List<ResponseDto> Responses
     );
@@ -67,7 +68,8 @@ public class GetSessionBySessionCode : IEndpoint
             session.Questions.Select(q => new QuestionDto(
                 q.Id, 
                 q.QuestionNumber, 
-                q.TimeStamp,
+                q.StartTime,
+                q.EndTime,
                 q.SessionId,
                 q.Responses.Select(r => new ResponseDto(
                     r.Id, 

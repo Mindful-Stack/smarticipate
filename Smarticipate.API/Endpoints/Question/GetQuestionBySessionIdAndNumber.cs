@@ -20,7 +20,8 @@ public class GetQuestionBySessionIdAndNumber : IEndpoint
     private record QuestionResponse(
         int Id,
         int QuestionNumber,
-        DateTime? TimeStamp,
+        DateTime? StartTime,
+        DateTime? EndTime,
         int SessionId,
         List<ResponseDto> Responses
     );
@@ -51,7 +52,8 @@ public class GetQuestionBySessionIdAndNumber : IEndpoint
         var response = new QuestionResponse(
             question.Id,
             question.QuestionNumber,
-            question.TimeStamp,
+            question.StartTime,
+            question.EndTime,
             question.SessionId,
             question.Responses
                 .Select(r => new ResponseDto(

@@ -222,6 +222,23 @@
                 }
                 else
                 {
+                    if (!string.IsNullOrEmpty(_sessionCode))
+                    {
+                        var session = await SessionServices.GetSessionByCodeAsync(_sessionCode);
+                        if (session?.Questions?.Any() == true)
+                        {
+                            var latestQuestion = session.Questions
+                                .OrderByDescending(q => q.QuestionNumber)
+                                .FirstOrDefault();
+
+                            if (latestQuestion is not null && !latestQuestion.EndTime.HasValue)
+                            {
+                                await QuestionServices.UpdateQuestionEndTimeAsync(latestQuestion.Id, DateTime.Now);
+                            }
+                        }
+                        await LiveSessionServices.StopQuestion();
+                    }
+                    
                     _countdownTimer?.Dispose();
                     _countdownTimer = null;
                     _isTimerOn = false;
@@ -243,6 +260,20 @@
 
         if (!string.IsNullOrEmpty(_sessionCode))
         {
+            //TODO: add save Endtime to db
+
+            var session = await SessionServices.GetSessionByCodeAsync(_sessionCode);
+            if (session?.Questions?.Any() == true)
+            {
+                var latestQuestion = session.Questions
+                    .OrderByDescending(q => q.QuestionNumber)
+                    .FirstOrDefault();
+
+                if (latestQuestion is not null && !latestQuestion.EndTime.HasValue)
+                {
+                    await QuestionServices.UpdateQuestionEndTimeAsync(latestQuestion.Id, DateTime.Now);
+                }
+            }
             await LiveSessionServices.StopQuestion();
         }
     }

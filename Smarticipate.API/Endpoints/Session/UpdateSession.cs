@@ -18,7 +18,8 @@ public class UpdateSession : IEndpoint
     }
 
     public record Request(
-        [FromBody] DateTime? EndTime);
+        [FromBody] DateTime? EndTime
+    );
 
     private static async Task<IResult> Handler(
         string sessionCode,
