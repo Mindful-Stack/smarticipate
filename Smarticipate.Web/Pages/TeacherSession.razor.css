@@ -48,14 +48,17 @@
 }
 
 .activeSessionContainer {
-    display: flex;
-    align-self: flex-start;
+    display: grid;
+    grid-template-rows: 2rem auto;
+    align-self: start;
     padding: 2rem 0 0 2.5rem;
     width: 100%;
     height: 100%;
 }
 
 .sessionInfo {
+    grid-row: 1;
+    grid-column: 1 /-1;
     display: flex;
     align-items: center;
     height: max-content;
@@ -69,12 +72,15 @@
 
 .timer {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(3, auto);
     align-self: center;
+    align-items: center;
     margin-top: -6rem;
-    justify-self: flex-start;
+    justify-self: center;
     justify-items: center;
-    gap: 3rem;
+    justify-content: center;
+    gap: 5rem;
+    width: 80%;
 }
 
 .timerInput {
@@ -125,6 +131,92 @@
     position: absolute;
 }
 
+/* ############# CHART ############# */
+.responseChartContainer {
+    justify-self: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 400px;
+    width: 400px;
+    background-color: var(--beige);
+    border-radius: var(--border-radius);
+    padding: 1.5rem 1.5rem 4rem 1.5rem !important;
+    border: 2px solid var(--dark);
+}
+
+.responseChartContainer h3 {
+    margin-bottom: 0.5rem;
+    font-family: var(--ekwarg);
+    color: var(--dark);
+}
+
+::deep .mud-chart {
+    transform: scale(1);
+    transform-origin: center center;
+    margin: 10px auto;
+    height: 100% !important;
+    width: 100%;
+}
+
+::deep(.mud-chart-legend) {
+    font-size: 1.4rem !important;
+    padding-top: 10px !important;
+}
+
+::deep .mud-charts-xaxis text,
+::deep .mud-charts-yaxis text
+{
+    font-size: 1.5rem !important;
+    font-weight: bold !important;
+}
+
+::deep .mud-charts-yaxis text{
+    text-anchor: middle;
+}
+
+::deep .mud-charts-xaxis text:first-of-type {
+    text-anchor: start;
+}
+
+::deep .mud-charts-xaxis text:last-of-type {
+    text-anchor: end;
+}
+
+::deep(.mud-chart-legend-text) {
+    font-size: 1.25rem !important; /* Adjust to desired size */
+}
+
+::deep .mud-charts-grid,
+::deep .mud-charts-grid{
+    stroke: var(--dark);
+    stroke-width: 2px;
+}
+
+::deep(.mud-chart rect.mud-bar-char-bar[data-index="0"]) {
+    fill: var(--red) !important;
+}
+
+::deep(.mud-chart rect.mud-bar-char-bar[data-index="1"]) {
+    fill: var(--teal) !important;
+}
+
+::deep(.mud-chart rect.mud-bar-char-bar[data-index="2"]) {
+    fill: var(--orange) !important;
+}
+
+::deep(.mud-chart-legend-item:nth-child(1) .mud-chart-legend-marker) {
+    background-color: var(--red) !important;
+}
+
+::deep(.mud-chart-legend-item:nth-child(2) .mud-chart-legend-marker) {
+    background-color: var(--teal) !important;
+}
+
+::deep(.mud-chart-legend-item:nth-child(3) .mud-chart-legend-marker) {
+    background-color: var(--orange) !important;
+}
+
 .studentCount {
     position: fixed;
     bottom: 1rem;
@@ -135,7 +227,7 @@
     align-items: center;
     justify-content: flex-end;
     gap: .5rem;
-    
+
     font-size: 1.5rem;
     font-weight: 700;
     font-family: var(--ekwarg);

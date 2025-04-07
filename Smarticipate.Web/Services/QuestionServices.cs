@@ -124,13 +124,6 @@ public class QuestionServices(IHttpClientFactory httpClientFactory) : IService
         public List<ResponseDto> Responses { get; set; }
     }
 
-    // public class QuestionDto
-    // {
-    //     public int Id { get; set; }
-    //     public int QuestionNumber { get; set; }
-    //     public List<ResponseDto> Responses { get; set; } = new();
-    // }
-
     public class ResponseDto
     {
         public int Id { get; set; }
