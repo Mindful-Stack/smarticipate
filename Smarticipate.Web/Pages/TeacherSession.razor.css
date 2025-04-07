@@ -157,11 +157,14 @@
     margin: 10px auto;
     height: 100% !important;
     width: 100%;
+    
 }
 
 ::deep(.mud-chart-legend) {
     font-size: 1.4rem !important;
     padding-top: 10px !important;
+    color: var(--dark);
+    font-weight: bold !important;
 }
 
 ::deep .mud-charts-xaxis text,
@@ -182,10 +185,22 @@
 ::deep .mud-charts-xaxis text:last-of-type {
     text-anchor: end;
 }
-
-::deep(.mud-chart-legend-text) {
-    font-size: 1.25rem !important; /* Adjust to desired size */
+::deep .mud-chart-bar{
+    stroke-width: 40px;
 }
+
+::deep .mud-charts-bar-series
+{
+       transform: translateX(85px) scaleX(.8) ;
+}
+::deep .mud-charts-xaxis
+{
+       transform: translateX(30px) translateY(12px);
+}
+
+::deep (.mud-chart-legend-text) {
+    font-size: 1.25rem !important;
+    }
 
 ::deep .mud-charts-grid,
 ::deep .mud-charts-grid{
