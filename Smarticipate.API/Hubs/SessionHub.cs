@@ -44,7 +44,6 @@ public class SessionHub : Hub
         try
         {
             await Groups.AddToGroupAsync(connectionId, $"student-{sessionCode}");
-
             await Groups.AddToGroupAsync(connectionId, sessionCode);
 
             int studentCount;
@@ -55,6 +54,7 @@ public class SessionHub : Hub
                     _studentConnections[sessionCode] = new HashSet<string>();
                 }
 
+                _studentConnections[sessionCode].Add(connectionId);
                 studentCount = _studentConnections[sessionCode].Count;
                 Console.WriteLine(
                     $"Student IDs in session {sessionCode}: {string.Join(", ", _studentConnections[sessionCode])}");
