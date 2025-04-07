@@ -333,54 +333,47 @@
             return;
         }
 
-        // _isLoading = true;
         _errorMessage = string.Empty;
-        
+
         try
         {
-            if (!LiveSessionServices.IsConnected)
-            {
-                await LiveSessionServices.InitializeConnection();
-                await Task.Delay(300); // Small delay to ensure connection is ready
-            }
-
             var session = await SessionServices.GetSessionByCodeAsync(_sessionCode);
             Console.WriteLine($"Session: {(session != null ? "Found" : "Not Found")}, Active: {session?.IsActive}");
 
             if (session is not null && session.IsActive)
             {
                 _isLoading = true;
-                
-                _isInSession = true;
-                _sessionEnded = false;
 
-                await LiveSessionServices.JoinSession(_sessionCode);
-
-                //new pattern syntax for conditions for FirstOrDefault
-                var activeQuestion = session.Questions.OrderByDescending(q => q.StartTime).FirstOrDefault(q => q is { StartTime: not null, EndTime: null });
-
-                //TODO: fix join session when session is terminated or started
-                if (activeQuestion != null)
+                if (!LiveSessionServices.IsConnected)
                 {
-                    Console.WriteLine($"Found active question: {activeQuestion.Id}");
-                    ActiveQuestionId = activeQuestion.Id;
-                    _countdownDisplay = TimeSpan.FromSeconds(CountdownTime).ToString(@"mm\:ss");
-                    StateHasChanged();
+                    Console.WriteLine("Failed to establish SignalR connection");
+                    _errorMessage = "Connection error. Please try again.";
+                    _isLoading = false;
+                    return;
                 }
 
-                StateHasChanged();
+                // Join session first
+                await LiveSessionServices.JoinSession(_sessionCode);
+                Console.WriteLine("Successfully joined session group");
+
+                // Register as student after a small delay
+                await Task.Delay(500);
+                Console.WriteLine($"About to register as student for session {_sessionCode}...");
+                await LiveSessionServices.RegisterAsStudent(_sessionCode);
+                Console.WriteLine("Student registration call completed");
+
+                _isInSession = true;
+                _sessionEnded = false;
             }
             else
             {
                 _errorMessage = "No active session found with that code.";
-                Console.WriteLine("Session doesn't exist or is not active");
             }
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Error joining session: {ex.Message}");
             _errorMessage = "Error joining session. Please try again.";
-            throw;
         }
         finally
         {
@@ -390,10 +383,18 @@
 
     private async Task LeaveSession()
     {
-        if (_isInSession)
+        if (_isInSession && !string.IsNullOrEmpty(_sessionCode))
         {
-            await LiveSessionServices.LeaveSession();
-            ResetSession();
+            try
+            {
+                await LiveSessionServices.LeaveAsStudent(_sessionCode);
+                await LiveSessionServices.LeaveSession();
+                ResetSession();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error leaving session: {ex.Message}");
+            }
         }
     }
 

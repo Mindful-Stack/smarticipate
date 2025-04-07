@@ -46,6 +46,10 @@
                             </div>
                         </div>
                     </div>
+                    <div
+                        style="position: fixed; bottom: 40px; right: 10px; font-size: 12px; background-color: #f0f0f0; padding: 5px;">
+                        Connected Students: @StudentCount
+                    </div>
                 }
             </Authorized>
             <NotAuthorized>
@@ -63,30 +67,58 @@
     private string _sessionCode = string.Empty;
     private Random _random = new();
 
+    private int _studentCount = 0;
+
+    private int StudentCount
+    {
+        get => _studentCount;
+        set
+        {
+            if (_studentCount != value)
+            {
+                _studentCount = value;
+                StateHasChanged();
+            }
+        }
+    }
+
     private bool _isTimerOn;
     private int _inputCountdownTime = 60;
     private int _countdownTime = 60;
     private string _countdownDisplay = "00:00";
     private int _initialCountdownTime;
     private double _progressPercentage = 100;
+    private Timer? _countdownTimer;
+
     private Timer? _heartbeatTimer;
     private readonly int _heartbeatInterval = 15000;
-
-    private Timer? _countdownTimer;
 
     protected override async Task OnInitializedAsync()
     {
         await LiveSessionServices.InitializeConnection();
+        LiveSessionServices.OnStudentCountChanged -= HandleStudentCountChanged;
+        LiveSessionServices.OnStudentCountChanged += HandleStudentCountChanged;
+        Console.WriteLine("Registered StudentCountChanged handler");
+
         await LoadActiveSession();
 
         if (!string.IsNullOrEmpty(_sessionCode))
         {
             await LiveSessionServices.JoinSession(_sessionCode);
-            LiveSessionServices.RegisterAsTeacher(_sessionCode);
+            await LiveSessionServices.RegisterAsTeacher(_sessionCode);
+            Console.WriteLine($"Teacher registered to session {_sessionCode}");
         }
-        
+
         await CloseActiveQuestionsAsync();
         StartHeartbeatTimer();
+    }
+
+    private void HandleStudentCountChanged(int count)
+    {
+        Console.WriteLine($"TeacherSession received student count update: {count}");
+
+        StudentCount = count;
+        InvokeAsync(StateHasChanged);
     }
 
     private async Task LoadActiveSession()
@@ -135,6 +167,7 @@
                 if (success)
                 {
                     await LiveSessionServices.JoinSession(_sessionCode);
+                    await LiveSessionServices.RegisterAsTeacher(_sessionCode);
                 }
                 else
                 {
@@ -224,6 +257,7 @@
                     _countdownDisplay = TimeSpan.FromSeconds(_countdownTime).ToString(@"mm\:ss");
                     _progressPercentage = ((double)_countdownTime / _initialCountdownTime) * 100;
 
+                    //Update countdown on StudentSession every 5 seconds to reduce network traffic. Every second when under 10 sec remaining
                     if (_countdownTime % 5 == 0 || _countdownTime <= 10)
                     {
                         await LiveSessionServices.UpdateRemainingTime(_countdownTime);
@@ -247,9 +281,10 @@
                                 await QuestionServices.UpdateQuestionEndTimeAsync(latestQuestion.Id, DateTime.Now);
                             }
                         }
+
                         await LiveSessionServices.StopQuestion();
                     }
-                    
+
                     _countdownTimer?.Dispose();
                     _countdownTimer = null;
                     _isTimerOn = false;
@@ -285,6 +320,7 @@
                     await QuestionServices.UpdateQuestionEndTimeAsync(latestQuestion.Id, DateTime.Now);
                 }
             }
+
             await LiveSessionServices.StopQuestion();
         }
     }
@@ -306,7 +342,7 @@
                         await CloseActiveQuestionsAsync();
                     }
                 }
-            },null, _heartbeatInterval, _heartbeatInterval
+            }, null, _heartbeatInterval, _heartbeatInterval
         );
     }
 
@@ -338,14 +374,16 @@
 
     public async ValueTask DisposeAsync()
     {
+        LiveSessionServices.OnStudentCountChanged -= HandleStudentCountChanged;
+
         _heartbeatTimer?.Dispose();
         _heartbeatTimer = null;
-        
+
         if (_isInSession && _isTimerOn)
         {
             await StopQuestionCountdown();
         }
-        
+
         if (_countdownTimer is not null)
         {
             _countdownTimer.Dispose();
@@ -368,7 +406,7 @@
                         await QuestionServices.UpdateQuestionEndTimeAsync(question.Id, DateTime.Now);
                     }
                 }
-                
+
                 await LiveSessionServices.EndSession();
                 await LiveSessionServices.LeaveSession();
             }

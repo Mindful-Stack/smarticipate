@@ -1,6 +1,7 @@
 ﻿using System.Dynamic;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.SignalR.Client;
+using MudBlazor;
 
 namespace Smarticipate.Web.Services;
 
@@ -16,8 +17,8 @@ public class LiveSessionServices(NavigationManager navigationManager) : IAsyncDi
     public event Action? OnSessionEnded;
     public event Action<int>? OnTimerUpdated;
     public event Action? OnTeacherDisconnected;
-   
-   
+    public event Action<int>? OnStudentCountChanged;
+
     public async Task RegisterAsTeacher(string sessionCode)
     {
         if (_hubConnection is null)
@@ -29,6 +30,33 @@ public class LiveSessionServices(NavigationManager navigationManager) : IAsyncDi
         {
             await _hubConnection!.InvokeAsync("RegisterAsTeacher", sessionCode);
             CurrentSessionCode = sessionCode;
+        }
+    }
+
+    public async Task RegisterAsStudent(string sessionCode)
+    {
+        try
+        {
+            if (_hubConnection is null)
+            {
+                await InitializeConnection();
+                await Task.Delay(500); // Additional delay to ensure connection is ready
+            }
+
+            if (IsConnected)
+            {
+                await _hubConnection!.InvokeAsync("RegisterAsStudent", sessionCode);
+                CurrentSessionCode = sessionCode;
+                Console.WriteLine("LiveSessionServices.RegisterAsStudent: Successfully registered");
+            }
+            else
+            {
+                Console.WriteLine("LiveSessionServices.RegisterAsStudent: Failed - Connection not established");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"LiveSessionServices.RegisterAsStudent: ERROR - {ex.Message}");
         }
     }
 
@@ -46,40 +74,37 @@ public class LiveSessionServices(NavigationManager navigationManager) : IAsyncDi
                 .Build();
 
             //debug handler
-            _hubConnection.On<string>("Debug", (message) => {
-                Console.WriteLine($"SignalR Debug: {message}");
-            });
+            _hubConnection.On<string>("Debug", (message) => { Console.WriteLine($"SignalR Debug: {message}"); });
 
             _hubConnection.On("TeacherDisconnected", () =>
             {
                 Console.WriteLine("Teacher disconnected unexpectedly");
                 OnTeacherDisconnected?.Invoke();
             });
-            
+
+            _hubConnection.On<int>("StudentCountChanged", (count) =>
+            {
+                Console.WriteLine($"LiveSessionServices received StudentCountChanged: {count}");
+                OnStudentCountChanged?.Invoke(count);
+            });
+
             _hubConnection.On<int, int, int>("QuestionStarted", (questionId, duration, remainingTime) =>
                 {
-                    Console.WriteLine($"RECEIVED QuestionStarted event: questionId={questionId}, duration={duration}, remainingTime={remainingTime}");
+                    Console.WriteLine(
+                        $"RECEIVED QuestionStarted event: questionId={questionId}, duration={duration}, remainingTime={remainingTime}");
                     OnQuestionStarted?.Invoke(questionId, duration, remainingTime);
                 }
             );
 
-            _hubConnection.On("QuestionStopped", () =>
-            {
-                OnQuestionStopped?.Invoke();
-            });
-            
-            _hubConnection.On<int>("TimerUpdated", (remainingTime) =>
-            {
-                OnTimerUpdated?.Invoke(remainingTime);
-            });
+            _hubConnection.On("QuestionStopped", () => { OnQuestionStopped?.Invoke(); });
 
-            _hubConnection.On("SessionEnded", () =>
-            {
-                OnSessionEnded?.Invoke();
-            });
-            
+            _hubConnection.On<int>("TimerUpdated", (remainingTime) => { OnTimerUpdated?.Invoke(remainingTime); });
+
+            _hubConnection.On("SessionEnded", () => { OnSessionEnded?.Invoke(); });
+
             //reconnection event handling
-            _hubConnection.Closed += async (error) => {
+            _hubConnection.Closed += async (error) =>
+            {
                 Console.WriteLine($"Connection closed: {error?.Message}");
                 await Task.Delay(new Random().Next(0, 5) * 1000);
                 await _hubConnection.StartAsync();
@@ -111,7 +136,15 @@ public class LiveSessionServices(NavigationManager navigationManager) : IAsyncDi
         {
             await _hubConnection!.InvokeAsync("JoinSession", sessionCode);
             CurrentSessionCode = sessionCode;
-        }        
+        }
+    }
+
+    public async Task LeaveAsStudent(string sessionCode)
+    {
+        if (IsConnected && !string.IsNullOrEmpty(sessionCode))
+        {
+            await _hubConnection!.InvokeAsync("LeaveAsStudent", sessionCode);
+        }
     }
 
     public async Task LeaveSession()
@@ -154,12 +187,12 @@ public class LiveSessionServices(NavigationManager navigationManager) : IAsyncDi
             await _hubConnection!.InvokeAsync("EndSession", CurrentSessionCode);
         }
     }
-    
+
     public async Task SendHeartbeat()
     {
         if (IsConnected)
         {
-            try 
+            try
             {
                 await _hubConnection!.InvokeAsync("SendHeartbeat");
                 Console.WriteLine("Heartbeat sent");
@@ -175,7 +208,7 @@ public class LiveSessionServices(NavigationManager navigationManager) : IAsyncDi
             throw new InvalidOperationException("Connection is not active");
         }
     }
-    
+
     public async ValueTask DisposeAsync()
     {
         if (_hubConnection is not null)
