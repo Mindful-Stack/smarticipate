@@ -16,6 +16,21 @@
     }
 }
 
+/* ########### LOADING ########## */
+.logo {
+    animation: spin 2s linear infinite;
+    width: 100px;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
 .teacherSession {
     display: flex;
     flex-direction: column;
@@ -157,7 +172,6 @@
     margin: 10px auto;
     height: 100% !important;
     width: 100%;
-
 }
 
 ::deep(.mud-chart-legend) {
@@ -167,7 +181,7 @@
     font-weight: bold !important;
 }
 
-::deep .mud-charts-xaxis text{
+::deep .mud-charts-xaxis text {
     display: none;
 }
 
@@ -234,6 +248,13 @@
     background-color: var(--orange) !important;
 }
 
+.count {
+    font-size: 1.5rem;
+    font-weight: bold;
+    fill: var(--dark);
+}
+
+/* ############# STUDENTCOUNT ############# */
 .studentCount {
     position: fixed;
     bottom: 1rem;
@@ -249,3 +270,5 @@
     font-weight: 700;
     font-family: var(--ekwarg);
 }
+
+

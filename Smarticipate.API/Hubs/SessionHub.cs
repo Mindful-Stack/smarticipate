@@ -7,6 +7,24 @@ public class SessionHub : Hub
     private static readonly Dictionary<string, HashSet<string>> _teacherConnections = new();
     private static readonly Dictionary<string, HashSet<string>> _studentConnections = new();
 
+    private static readonly Dictionary<string, (int QuestionId, int Duration, DateTime StartTime)> _activeQuestions =
+        new();
+
+    public async Task JoinSession(string sessionCode)
+    {
+        await Groups.AddToGroupAsync(Context.ConnectionId, sessionCode);
+    }
+
+    public async Task LeaveSession(string sessionCode)
+    {
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, sessionCode);
+    }
+
+    public async Task EndSession(string sessionCode)
+    {
+        await Clients.Group(sessionCode).SendAsync("SessionEnded");
+    }
+
     public async Task RegisterAsTeacher(string sessionCode)
     {
         var connectionId = Context.ConnectionId;
@@ -23,6 +41,7 @@ public class SessionHub : Hub
                 {
                     _teacherConnections[sessionCode] = new HashSet<string>();
                 }
+                _teacherConnections[sessionCode].Add(connectionId);
             }
 
             await Groups.AddToGroupAsync(connectionId, sessionCode);
@@ -62,6 +81,16 @@ public class SessionHub : Hub
 
             await Clients.Group($"teacher-{sessionCode}").SendAsync("StudentCountChanged", studentCount);
             Console.WriteLine($"Sent StudentCountChanged({studentCount}) to teacher-{sessionCode}");
+
+            var activeQuestion = GetActiveQuestionForSession(sessionCode); // You'll need to implement this method
+            if (activeQuestion.HasValue)
+            {
+                // Send active question details directly to the newly connected student
+                await Clients.Caller.SendAsync("QuestionStarted",
+                    activeQuestion.Value.QuestionId,
+                    activeQuestion.Value.Duration,
+                    activeQuestion.Value.RemainingTime);
+            }
         }
         catch (Exception ex)
         {
@@ -93,6 +122,53 @@ public class SessionHub : Hub
         }
 
         await Clients.Group($"teacher-{sessionCode}").SendAsync("StudentCountChanged", studentCount);
+    }
+
+    public async Task StartQuestion(string sessionCode, int questionId, int duration)
+    {
+        lock (_activeQuestions)
+        {
+            _activeQuestions[sessionCode] = (questionId, duration, DateTime.Now);
+        }
+
+        await Clients.Group(sessionCode).SendAsync("QuestionStarted", questionId, duration, duration);
+    }
+
+    public async Task StopQuestion(string sessionCode)
+    {
+        lock (_activeQuestions)
+        {
+            _activeQuestions.Remove(sessionCode);
+        }
+
+        await Clients.Group(sessionCode).SendAsync("QuestionStopped");
+    }
+    
+    private (int QuestionId, int Duration, int RemainingTime)? GetActiveQuestionForSession(string sessionCode)
+    {
+        lock (_activeQuestions)
+        {
+            if (_activeQuestions.TryGetValue(sessionCode, out var questionInfo))
+            {
+                //Check time passed since question started
+                var elapsed = (int)(DateTime.Now - questionInfo.StartTime).TotalSeconds;
+                var remaining = Math.Max(0, questionInfo.Duration - elapsed);
+            
+                return (questionInfo.QuestionId, questionInfo.Duration, remaining);
+            }
+        }
+    
+        return null;
+    }
+
+    public async Task UpdateRemainingTime(string sessionCode, int remainingTime)
+    {
+        await Clients.Group(sessionCode).SendAsync("TimerUpdated", remainingTime);
+    }
+
+    public async Task SendHeartbeat()
+    {
+        await Clients.Caller.SendAsync("Debug", "Heartbeat received");
     }
 
     public override async Task OnDisconnectedAsync(Exception? exception)
@@ -156,40 +232,5 @@ public class SessionHub : Hub
         Console.WriteLine($"Student left session {studentSession}, new count: {studentCount}");
 
         await base.OnDisconnectedAsync(exception);
-    }
-
-    public async Task JoinSession(string sessionCode)
-    {
-        await Groups.AddToGroupAsync(Context.ConnectionId, sessionCode);
-    }
-
-    public async Task LeaveSession(string sessionCode)
-    {
-        await Groups.RemoveFromGroupAsync(Context.ConnectionId, sessionCode);
-    }
-
-    public async Task StartQuestion(string sessionCode, int questionId, int duration)
-    {
-        await Clients.Group(sessionCode).SendAsync("QuestionStarted", questionId, duration, duration);
-    }
-
-    public async Task StopQuestion(string sessionCode)
-    {
-        await Clients.Group(sessionCode).SendAsync("QuestionStopped");
-    }
-
-    public async Task UpdateRemainingTime(string sessionCode, int remainingTime)
-    {
-        await Clients.Group(sessionCode).SendAsync("TimerUpdated", remainingTime);
-    }
-
-    public async Task EndSession(string sessionCode)
-    {
-        await Clients.Group(sessionCode).SendAsync("SessionEnded");
-    }
-
-    public async Task SendHeartbeat()
-    {
-        await Clients.Caller.SendAsync("Debug", "Heartbeat received");
     }
 }

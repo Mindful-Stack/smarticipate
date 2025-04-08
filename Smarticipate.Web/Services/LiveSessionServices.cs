@@ -19,47 +19,6 @@ public class LiveSessionServices(NavigationManager navigationManager) : IAsyncDi
     public event Action? OnTeacherDisconnected;
     public event Action<int>? OnStudentCountChanged;
 
-    public async Task RegisterAsTeacher(string sessionCode)
-    {
-        if (_hubConnection is null)
-        {
-            await InitializeConnection();
-        }
-
-        if (IsConnected)
-        {
-            await _hubConnection!.InvokeAsync("RegisterAsTeacher", sessionCode);
-            CurrentSessionCode = sessionCode;
-        }
-    }
-
-    public async Task RegisterAsStudent(string sessionCode)
-    {
-        try
-        {
-            if (_hubConnection is null)
-            {
-                await InitializeConnection();
-                await Task.Delay(500); // Additional delay to ensure connection is ready
-            }
-
-            if (IsConnected)
-            {
-                await _hubConnection!.InvokeAsync("RegisterAsStudent", sessionCode);
-                CurrentSessionCode = sessionCode;
-                Console.WriteLine("LiveSessionServices.RegisterAsStudent: Successfully registered");
-            }
-            else
-            {
-                Console.WriteLine("LiveSessionServices.RegisterAsStudent: Failed - Connection not established");
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"LiveSessionServices.RegisterAsStudent: ERROR - {ex.Message}");
-        }
-    }
-
     public async Task InitializeConnection()
     {
         if (_hubConnection is null)
@@ -124,7 +83,7 @@ public class LiveSessionServices(NavigationManager navigationManager) : IAsyncDi
             Console.WriteLine($"Connection restarted with ID: {_hubConnection.ConnectionId}");
         }
     }
-
+    
     public async Task JoinSession(string sessionCode)
     {
         if (_hubConnection is null)
@@ -138,21 +97,70 @@ public class LiveSessionServices(NavigationManager navigationManager) : IAsyncDi
             CurrentSessionCode = sessionCode;
         }
     }
-
-    public async Task LeaveAsStudent(string sessionCode)
-    {
-        if (IsConnected && !string.IsNullOrEmpty(sessionCode))
-        {
-            await _hubConnection!.InvokeAsync("LeaveAsStudent", sessionCode);
-        }
-    }
-
+    
     public async Task LeaveSession()
     {
         if (IsConnected && !string.IsNullOrEmpty(CurrentSessionCode))
         {
             await _hubConnection!.InvokeAsync("LeaveSession", CurrentSessionCode);
             CurrentSessionCode = null;
+        }
+    }
+    
+    public async Task EndSession()
+    {
+        if (IsConnected && !string.IsNullOrEmpty(CurrentSessionCode))
+        {
+            await _hubConnection!.InvokeAsync("EndSession", CurrentSessionCode);
+        }
+    }
+    
+    public async Task RegisterAsTeacher(string sessionCode)
+    {
+        if (_hubConnection is null)
+        {
+            await InitializeConnection();
+        }
+
+        if (IsConnected)
+        {
+            await _hubConnection!.InvokeAsync("RegisterAsTeacher", sessionCode);
+            CurrentSessionCode = sessionCode;
+        }
+    }
+
+    public async Task RegisterAsStudent(string sessionCode)
+    {
+        try
+        {
+            if (_hubConnection is null)
+            {
+                await InitializeConnection();
+                await Task.Delay(500); // Additional delay to ensure connection is ready
+            }
+
+            if (IsConnected)
+            {
+                await _hubConnection!.InvokeAsync("RegisterAsStudent", sessionCode);
+                CurrentSessionCode = sessionCode;
+                Console.WriteLine("LiveSessionServices.RegisterAsStudent: Successfully registered");
+            }
+            else
+            {
+                Console.WriteLine("LiveSessionServices.RegisterAsStudent: Failed - Connection not established");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"LiveSessionServices.RegisterAsStudent: ERROR - {ex.Message}");
+        }
+    }
+
+    public async Task LeaveAsStudent(string sessionCode)
+    {
+        if (IsConnected && !string.IsNullOrEmpty(sessionCode))
+        {
+            await _hubConnection!.InvokeAsync("LeaveAsStudent", sessionCode);
         }
     }
 
@@ -177,14 +185,6 @@ public class LiveSessionServices(NavigationManager navigationManager) : IAsyncDi
         if (IsConnected && !string.IsNullOrEmpty(CurrentSessionCode))
         {
             await _hubConnection!.InvokeAsync("UpdateRemainingTime", CurrentSessionCode, remainingTime);
-        }
-    }
-
-    public async Task EndSession()
-    {
-        if (IsConnected && !string.IsNullOrEmpty(CurrentSessionCode))
-        {
-            await _hubConnection!.InvokeAsync("EndSession", CurrentSessionCode);
         }
     }
 

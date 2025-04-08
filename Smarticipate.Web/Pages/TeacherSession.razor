@@ -9,7 +9,13 @@
     <div class="teacherSessionContent">
         <AuthorizeView>
             <Authorized>
-                @if (!_isInSession)
+                @if (_isLoading)
+                {
+                    <div class="inactiveSessionContainer">
+                        <img class="logo" src="images/smarticipate-logo.png"/></div>
+                    <h2>Checking for active session...</h2>
+                }
+                else if (!_isInSession)
                 {
                     <div class="inactiveSessionContainer">
                         <h1>Start a live session</h1>
@@ -44,7 +50,6 @@
                                                      Style="width: 150px; height: 150px;" Value="@_progressPercentage"/>
                                 <h1 class="countDownRest">@_countdownDisplay</h1>
                             </div>
-
                             <div class="responseChartContainer">
                                 <h3>Latest Question Responses:</h3>
                                 @if (_showResponseChart && _responseSeries.Any())
@@ -56,9 +61,6 @@
                                               Height="@_chartHeight"
                                               ChartOptions="@_chartOptions">
                                         <CustomGraphics>
-                                            <style>
-                                                .count{ font-size:  1.5rem; font-weight: bold; fill: var(--dark);}
-                                            </style>
                                             <text x="105" y="105%" class="tooFast count">@_tooFastCount</text>
                                             <text x="348" y="105%" class="perfect count">@_perfectCount</text>
                                             <text x="590" y="105%" class="tooSlow count">@_tooSlowCount</text>
@@ -87,6 +89,7 @@
 @code {
 
     //SESSION
+    private bool _isLoading = true;
     private bool _isInSession;
     private string _sessionCode = string.Empty;
     private Random _random = new();
@@ -126,6 +129,7 @@
     private string[] _responseLabels = { "Too Fast", "Perfect", "Too Slow" };
     private string _chartHeight = "280px";
     private string _chartWidth = "100%";
+
     private ChartOptions _chartOptions = new()
     {
         InterpolationOption = InterpolationOption.NaturalSpline,
@@ -133,9 +137,10 @@
         ShowToolTips = true,
         YAxisLines = true,
         XAxisLines = true,
-        
+
         LineStrokeWidth = 2
     };
+
     private int _tooFastCount = 0;
     private int _perfectCount = 0;
     private int _tooSlowCount = 0;
@@ -160,14 +165,6 @@
         StartHeartbeatTimer();
     }
 
-    private void HandleStudentCountChanged(int count)
-    {
-        Console.WriteLine($"TeacherSession received student count update: {count}");
-
-        StudentCount = count;
-        InvokeAsync(StateHasChanged);
-    }
-
     private async Task LoadActiveSession()
     {
         try
@@ -188,6 +185,11 @@
         catch (Exception ex)
         {
             Console.WriteLine($"Error loading active session: {ex.Message}");
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
         }
     }
 
@@ -374,27 +376,6 @@
         }
     }
 
-    private void StartHeartbeatTimer()
-    {
-        _heartbeatTimer = new Timer(
-            async _ =>
-            {
-                if (_isInSession && LiveSessionServices.IsConnected)
-                {
-                    try
-                    {
-                        await LiveSessionServices.SendHeartbeat();
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"Heartbeat error: {ex.Message}");
-                        await CloseActiveQuestionsAsync();
-                    }
-                }
-            }, null, _heartbeatInterval, _heartbeatInterval
-        );
-    }
-
     private async Task CloseActiveQuestionsAsync()
     {
         if (!string.IsNullOrEmpty(_sessionCode))
@@ -417,51 +398,6 @@
             catch (Exception ex)
             {
                 Console.WriteLine($"Error closing active questions: {ex.Message}");
-            }
-        }
-    }
-
-    public async ValueTask DisposeAsync()
-    {
-        LiveSessionServices.OnStudentCountChanged -= HandleStudentCountChanged;
-
-        _heartbeatTimer?.Dispose();
-        _heartbeatTimer = null;
-
-        if (_isInSession && _isTimerOn)
-        {
-            await StopQuestionCountdown();
-        }
-
-        if (_countdownTimer is not null)
-        {
-            _countdownTimer.Dispose();
-            _countdownTimer = null;
-        }
-
-        if (_isInSession && !string.IsNullOrEmpty(_sessionCode))
-        {
-            try
-            {
-                var session = await SessionServices.GetSessionByCodeAsync(_sessionCode);
-                if (session?.Questions?.Any() == true)
-                {
-                    var activeQuestions = session.Questions
-                        .Where(q => q.StartTime.HasValue && !q.EndTime.HasValue)
-                        .ToList();
-
-                    foreach (var question in activeQuestions)
-                    {
-                        await QuestionServices.UpdateQuestionEndTimeAsync(question.Id, DateTime.Now);
-                    }
-                }
-
-                await LiveSessionServices.EndSession();
-                await LiveSessionServices.LeaveSession();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error leaving session: {ex.Message}");
             }
         }
     }
@@ -513,6 +449,80 @@
         {
             Console.WriteLine($"Error getting responses: {ex.Message}");
         }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        LiveSessionServices.OnStudentCountChanged -= HandleStudentCountChanged;
+
+        _heartbeatTimer?.Dispose();
+        _heartbeatTimer = null;
+
+        if (_isInSession && _isTimerOn)
+        {
+            await StopQuestionCountdown();
+        }
+
+        if (_countdownTimer is not null)
+        {
+            _countdownTimer.Dispose();
+            _countdownTimer = null;
+        }
+
+        if (_isInSession && !string.IsNullOrEmpty(_sessionCode))
+        {
+            try
+            {
+                var session = await SessionServices.GetSessionByCodeAsync(_sessionCode);
+                if (session?.Questions?.Any() == true)
+                {
+                    var activeQuestions = session.Questions
+                        .Where(q => q.StartTime.HasValue && !q.EndTime.HasValue)
+                        .ToList();
+
+                    foreach (var question in activeQuestions)
+                    {
+                        await QuestionServices.UpdateQuestionEndTimeAsync(question.Id, DateTime.Now);
+                    }
+                }
+
+                await LiveSessionServices.EndSession();
+                await LiveSessionServices.LeaveSession();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error leaving session: {ex.Message}");
+            }
+        }
+    }
+
+    private void StartHeartbeatTimer()
+    {
+        _heartbeatTimer = new Timer(
+            async _ =>
+            {
+                if (_isInSession && LiveSessionServices.IsConnected)
+                {
+                    try
+                    {
+                        await LiveSessionServices.SendHeartbeat();
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Heartbeat error: {ex.Message}");
+                        await CloseActiveQuestionsAsync();
+                    }
+                }
+            }, null, _heartbeatInterval, _heartbeatInterval
+        );
+    }
+
+    private void HandleStudentCountChanged(int count)
+    {
+        Console.WriteLine($"TeacherSession received student count update: {count}");
+
+        StudentCount = count;
+        InvokeAsync(StateHasChanged);
     }
 
 }
