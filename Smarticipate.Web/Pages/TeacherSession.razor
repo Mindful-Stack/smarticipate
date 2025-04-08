@@ -1,14 +1,21 @@
 ﻿@page "/TeacherSession"
-@using Smarticipate.Web.Services
 @inject SessionServices SessionServices
 @inject UserServices UserServices
 @inject QuestionServices QuestionServices
+@inject LiveSessionServices LiveSessionServices
+@implements IAsyncDisposable
 
 <div class="teacherSession">
     <div class="teacherSessionContent">
         <AuthorizeView>
             <Authorized>
-                @if (!_isInSession)
+                @if (_isLoading)
+                {
+                    <div class="inactiveSessionContainer">
+                        <img class="logo" src="images/smarticipate-logo.png"/></div>
+                    <h2>Checking for active session...</h2>
+                }
+                else if (!_isInSession)
                 {
                     <div class="inactiveSessionContainer">
                         <h1>Start a live session</h1>
@@ -43,7 +50,29 @@
                                                      Style="width: 150px; height: 150px;" Value="@_progressPercentage"/>
                                 <h1 class="countDownRest">@_countdownDisplay</h1>
                             </div>
+                            <div class="responseChartContainer">
+                                <h3>Latest Question Responses:</h3>
+                                @if (_showResponseChart && _responseSeries.Any())
+                                {
+                                    <MudChart ChartType="ChartType.Bar"
+                                              ChartSeries="@_responseSeries"
+                                              XAxisLabels="@_responseLabels"
+                                              Width="@_chartWidth"
+                                              Height="@_chartHeight"
+                                              ChartOptions="@_chartOptions">
+                                        <CustomGraphics>
+                                            <text x="105" y="105%" class="tooFast count">@_tooFastCount</text>
+                                            <text x="348" y="105%" class="perfect count">@_perfectCount</text>
+                                            <text x="590" y="105%" class="tooSlow count">@_tooSlowCount</text>
+                                        </CustomGraphics>
+                                    </MudChart>
+                                }
+                            </div>
                         </div>
+                    </div>
+                    <div class="studentCount">
+                        <MudIcon Icon="@Icons.Material.Outlined.PeopleOutline" Color="Color.Dark" Size="Size.Large"/>
+                        @StudentCount
                     </div>
                 }
             </Authorized>
@@ -58,22 +87,82 @@
 </div>
 
 @code {
+
+    //SESSION
+    private bool _isLoading = true;
     private bool _isInSession;
     private string _sessionCode = string.Empty;
     private Random _random = new();
 
+    //STUDENT COUNT
+    private int _studentCount = 0;
+
+    private int StudentCount
+    {
+        get => _studentCount;
+        set
+        {
+            if (_studentCount != value)
+            {
+                _studentCount = value;
+                StateHasChanged();
+            }
+        }
+    }
+
+    //TIMER
     private bool _isTimerOn;
     private int _inputCountdownTime = 60;
     private int _countdownTime = 60;
     private string _countdownDisplay = "00:00";
     private int _initialCountdownTime;
     private double _progressPercentage = 100;
-
     private Timer? _countdownTimer;
+
+    //HEARTBEAT
+    private Timer? _heartbeatTimer;
+    private readonly int _heartbeatInterval = 15000;
+
+    //CHART
+    private bool _showResponseChart = false;
+    private List<ChartSeries> _responseSeries = new();
+    private string[] _responseLabels = { "Too Fast", "Perfect", "Too Slow" };
+    private string _chartHeight = "280px";
+    private string _chartWidth = "100%";
+
+    private ChartOptions _chartOptions = new()
+    {
+        InterpolationOption = InterpolationOption.NaturalSpline,
+        ChartPalette = new string[] { "var(--red)", "var(--teal)", "var(--orange)" },
+        ShowToolTips = true,
+        YAxisLines = true,
+        XAxisLines = true,
+
+        LineStrokeWidth = 2
+    };
+
+    private int _tooFastCount = 0;
+    private int _perfectCount = 0;
+    private int _tooSlowCount = 0;
 
     protected override async Task OnInitializedAsync()
     {
+        await LiveSessionServices.InitializeConnection();
+        LiveSessionServices.OnStudentCountChanged -= HandleStudentCountChanged;
+        LiveSessionServices.OnStudentCountChanged += HandleStudentCountChanged;
+        Console.WriteLine("Registered StudentCountChanged handler");
+
         await LoadActiveSession();
+
+        if (!string.IsNullOrEmpty(_sessionCode))
+        {
+            await LiveSessionServices.JoinSession(_sessionCode);
+            await LiveSessionServices.RegisterAsTeacher(_sessionCode);
+            Console.WriteLine($"Teacher registered to session {_sessionCode}");
+        }
+
+        await CloseActiveQuestionsAsync();
+        StartHeartbeatTimer();
     }
 
     private async Task LoadActiveSession()
@@ -88,6 +177,8 @@
                 {
                     _isInSession = true;
                     _sessionCode = activeSession.SessionCode;
+
+                    await LiveSessionServices.JoinSession(_sessionCode);
                 }
             }
         }
@@ -95,7 +186,12 @@
         {
             Console.WriteLine($"Error loading active session: {ex.Message}");
         }
-    }    
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
 
     private async Task StartSession()
     {
@@ -117,7 +213,12 @@
                 );
 
                 var success = await SessionServices.CreateSessionAsync(request);
-                if (!success)
+                if (success)
+                {
+                    await LiveSessionServices.JoinSession(_sessionCode);
+                    await LiveSessionServices.RegisterAsTeacher(_sessionCode);
+                }
+                else
                 {
                     _isInSession = false;
                     _sessionCode = string.Empty;
@@ -143,6 +244,12 @@
                 {
                     Console.WriteLine("Error updating session");
                 }
+
+                //Broadcast session end to connected clients
+                await LiveSessionServices.EndSession();
+
+                //Leave SignalR group
+                await LiveSessionServices.LeaveSession();
             }
         }
         catch (Exception ex)
@@ -156,7 +263,7 @@
             StopQuestionCountdown();
         }
     }
-    
+
     private async Task StartQuestionCountdown()
     {
         _countdownTime = _inputCountdownTime;
@@ -168,7 +275,18 @@
         if (!string.IsNullOrEmpty(_sessionCode))
         {
             var success = await QuestionServices.CreateQuestionAsync(_sessionCode);
-            if (!success)
+
+            if (success)
+            {
+                var sessionResponse = await SessionServices.GetSessionByCodeAsync(_sessionCode);
+                if (sessionResponse?.Questions.Any() == true)
+                {
+                    var latestQuestion = sessionResponse.Questions.OrderByDescending(q => q.QuestionNumber).First();
+
+                    await LiveSessionServices.StartQuestion(latestQuestion.Id, _initialCountdownTime);
+                }
+            }
+            else
             {
                 Console.WriteLine("Failed to create question");
             }
@@ -180,17 +298,43 @@
         }
 
         _countdownTimer = new Timer(
-            _ =>
+            async _ =>
             {
                 if (_countdownTime > 0)
                 {
                     _countdownTime--;
                     _countdownDisplay = TimeSpan.FromSeconds(_countdownTime).ToString(@"mm\:ss");
                     _progressPercentage = ((double)_countdownTime / _initialCountdownTime) * 100;
+
+                    //Update countdown on StudentSession every 5 seconds to reduce network traffic. Every second when under 10 sec remaining
+                    if (_countdownTime % 5 == 0 || _countdownTime <= 10)
+                    {
+                        await LiveSessionServices.UpdateRemainingTime(_countdownTime);
+                    }
+
                     InvokeAsync(StateHasChanged);
                 }
                 else
                 {
+                    if (!string.IsNullOrEmpty(_sessionCode))
+                    {
+                        var session = await SessionServices.GetSessionByCodeAsync(_sessionCode);
+                        if (session?.Questions?.Any() == true)
+                        {
+                            var latestQuestion = session.Questions
+                                .OrderByDescending(q => q.QuestionNumber)
+                                .FirstOrDefault();
+
+                            if (latestQuestion is not null && !latestQuestion.EndTime.HasValue)
+                            {
+                                await QuestionServices.UpdateQuestionEndTimeAsync(latestQuestion.Id, DateTime.Now);
+                                await GetResponsesForLatestQuestionAsync();
+                            }
+                        }
+
+                        await LiveSessionServices.StopQuestion();
+                    }
+
                     _countdownTimer?.Dispose();
                     _countdownTimer = null;
                     _isTimerOn = false;
@@ -203,13 +347,182 @@
         );
     }
 
-    private void StopQuestionCountdown()
+    private async Task StopQuestionCountdown()
     {
         _countdownTimer?.Dispose();
         _isTimerOn = false;
         _countdownDisplay = "00:00";
         _progressPercentage = 100;
+
+        if (!string.IsNullOrEmpty(_sessionCode))
+        {
+            //TODO: add save Endtime to db
+
+            var session = await SessionServices.GetSessionByCodeAsync(_sessionCode);
+            if (session?.Questions?.Any() == true)
+            {
+                var latestQuestion = session.Questions
+                    .OrderByDescending(q => q.QuestionNumber)
+                    .FirstOrDefault();
+
+                if (latestQuestion is not null && !latestQuestion.EndTime.HasValue)
+                {
+                    await QuestionServices.UpdateQuestionEndTimeAsync(latestQuestion.Id, DateTime.Now);
+                    await GetResponsesForLatestQuestionAsync();
+                }
+            }
+
+            await LiveSessionServices.StopQuestion();
+        }
     }
-    
+
+    private async Task CloseActiveQuestionsAsync()
+    {
+        if (!string.IsNullOrEmpty(_sessionCode))
+        {
+            try
+            {
+                var session = await SessionServices.GetSessionByCodeAsync(_sessionCode);
+                if (session?.Questions?.Any() == true)
+                {
+                    var activeQuestions = session.Questions
+                        .Where(q => q.StartTime.HasValue && !q.EndTime.HasValue)
+                        .ToList();
+
+                    foreach (var question in activeQuestions)
+                    {
+                        await QuestionServices.UpdateQuestionEndTimeAsync(question.Id, DateTime.Now);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error closing active questions: {ex.Message}");
+            }
+        }
+    }
+
+    private async Task GetResponsesForLatestQuestionAsync()
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(_sessionCode))
+                return;
+
+            var session = await SessionServices.GetSessionByCodeAsync(_sessionCode);
+            if (session?.Questions?.Any() != true)
+                return;
+
+            var latestQuestion = session.Questions
+                .OrderByDescending(q => q.QuestionNumber)
+                .FirstOrDefault();
+
+            if (latestQuestion is null)
+                return;
+
+            _tooFastCount = latestQuestion.Responses.Count(r => r.SelectedOption == ResponseOption.TooFast);
+            _perfectCount = latestQuestion.Responses.Count(r => r.SelectedOption == ResponseOption.Perfect);
+            _tooSlowCount = latestQuestion.Responses.Count(r => r.SelectedOption == ResponseOption.TooSlow);
+
+            _responseSeries = new List<ChartSeries>
+            {
+                new ChartSeries
+                {
+                    Name = "Too Fast",
+                    Data = new double[] { _tooFastCount, 0, 0 },
+                },
+                new ChartSeries
+                {
+                    Name = "Perfect",
+                    Data = new double[] { 0, _perfectCount, 0 },
+                },
+                new ChartSeries
+                {
+                    Name = "Too Slow",
+                    Data = new double[] { 0, 0, _tooSlowCount },
+                }
+            };
+            _showResponseChart = true;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error getting responses: {ex.Message}");
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        LiveSessionServices.OnStudentCountChanged -= HandleStudentCountChanged;
+
+        _heartbeatTimer?.Dispose();
+        _heartbeatTimer = null;
+
+        if (_isInSession && _isTimerOn)
+        {
+            await StopQuestionCountdown();
+        }
+
+        if (_countdownTimer is not null)
+        {
+            _countdownTimer.Dispose();
+            _countdownTimer = null;
+        }
+
+        if (_isInSession && !string.IsNullOrEmpty(_sessionCode))
+        {
+            try
+            {
+                var session = await SessionServices.GetSessionByCodeAsync(_sessionCode);
+                if (session?.Questions?.Any() == true)
+                {
+                    var activeQuestions = session.Questions
+                        .Where(q => q.StartTime.HasValue && !q.EndTime.HasValue)
+                        .ToList();
+
+                    foreach (var question in activeQuestions)
+                    {
+                        await QuestionServices.UpdateQuestionEndTimeAsync(question.Id, DateTime.Now);
+                    }
+                }
+
+                await LiveSessionServices.EndSession();
+                await LiveSessionServices.LeaveSession();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error leaving session: {ex.Message}");
+            }
+        }
+    }
+
+    private void StartHeartbeatTimer()
+    {
+        _heartbeatTimer = new Timer(
+            async _ =>
+            {
+                if (_isInSession && LiveSessionServices.IsConnected)
+                {
+                    try
+                    {
+                        await LiveSessionServices.SendHeartbeat();
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Heartbeat error: {ex.Message}");
+                        await CloseActiveQuestionsAsync();
+                    }
+                }
+            }, null, _heartbeatInterval, _heartbeatInterval
+        );
+    }
+
+    private void HandleStudentCountChanged(int count)
+    {
+        Console.WriteLine($"TeacherSession received student count update: {count}");
+
+        StudentCount = count;
+        InvokeAsync(StateHasChanged);
+    }
 
 }

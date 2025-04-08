@@ -29,6 +29,9 @@ public class GetActiveSession : IEndpoint
     public record QuestionDto(
         int Id,
         int QuestionNumber,
+        DateTime? StartTime,
+        DateTime? EndTime,
+        int SessionId,
         List<ResponseDto> Responses
     );
     
@@ -61,8 +64,11 @@ public class GetActiveSession : IEndpoint
             session.UserId,
             true,
             session.Questions.Select(q => new QuestionDto(
-                q.Id,
-                q.QuestionNumber,
+                q.Id, 
+                q.QuestionNumber, 
+                q.StartTime,
+                q.EndTime,
+                q.SessionId,
                 q.Responses.Select(r => new ResponseDto(
                     r.Id,
                     (ResponseOption)r.SelectedOption,

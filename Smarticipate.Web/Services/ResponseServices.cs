@@ -53,7 +53,8 @@ public class ResponseServices(IHttpClientFactory httpClientFactory) : IService
     {
         public int Id { get; set; }
         public int QuestionNumber { get; set; }
-        public DateTime? TimeStamp { get; set; }
+        public DateTime? StartTime { get; set; }
+        public DateTime? EndTime { get; set; }
         public int QuestionId { get; set; }
         public List<ResponseDto> Responses { get; set; }
     }
