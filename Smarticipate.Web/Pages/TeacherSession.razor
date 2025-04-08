@@ -55,6 +55,14 @@
                                               Width="@_chartWidth"
                                               Height="@_chartHeight"
                                               ChartOptions="@_chartOptions">
+                                        <CustomGraphics>
+                                            <style>
+                                                .count{ font-size:  1.5rem; font-weight: bold; fill: var(--dark);}
+                                            </style>
+                                            <text x="105" y="105%" class="tooFast count">@_tooFastCount</text>
+                                            <text x="348" y="105%" class="perfect count">@_perfectCount</text>
+                                            <text x="590" y="105%" class="tooSlow count">@_tooSlowCount</text>
+                                        </CustomGraphics>
                                     </MudChart>
                                 }
                             </div>
@@ -122,6 +130,11 @@
     {
         InterpolationOption = InterpolationOption.NaturalSpline,
         ChartPalette = new string[] { "var(--red)", "var(--teal)", "var(--orange)" },
+        ShowToolTips = true,
+        YAxisLines = true,
+        XAxisLines = true,
+        
+        LineStrokeWidth = 2
     };
     private int _tooFastCount = 0;
     private int _perfectCount = 0;
@@ -313,6 +326,7 @@
                             if (latestQuestion is not null && !latestQuestion.EndTime.HasValue)
                             {
                                 await QuestionServices.UpdateQuestionEndTimeAsync(latestQuestion.Id, DateTime.Now);
+                                await GetResponsesForLatestQuestionAsync();
                             }
                         }
 

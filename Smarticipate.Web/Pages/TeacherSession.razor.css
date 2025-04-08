@@ -157,7 +157,7 @@
     margin: 10px auto;
     height: 100% !important;
     width: 100%;
-    
+
 }
 
 ::deep(.mud-chart-legend) {
@@ -167,14 +167,16 @@
     font-weight: bold !important;
 }
 
-::deep .mud-charts-xaxis text,
-::deep .mud-charts-yaxis text
-{
+::deep .mud-charts-xaxis text{
+    display: none;
+}
+
+::deep .mud-charts-yaxis text {
     font-size: 1.5rem !important;
     font-weight: bold !important;
 }
 
-::deep .mud-charts-yaxis text{
+::deep .mud-charts-yaxis text {
     text-anchor: middle;
 }
 
@@ -185,25 +187,25 @@
 ::deep .mud-charts-xaxis text:last-of-type {
     text-anchor: end;
 }
-::deep .mud-chart-bar{
-    stroke-width: 40px;
+
+::deep .mud-chart-bar {
+    stroke-width: 80px;
 }
 
-::deep .mud-charts-bar-series
-{
-       transform: translateX(85px) scaleX(.8) ;
+::deep .mud-charts-bar-series {
+    transform: translateX(85px) scaleX(.8);
 }
-::deep .mud-charts-xaxis
-{
-       transform: translateX(30px) translateY(12px);
+
+::deep .mud-charts-xaxis {
+    transform: translateX(30px) translateY(12px);
 }
 
 ::deep (.mud-chart-legend-text) {
     font-size: 1.25rem !important;
-    }
+}
 
 ::deep .mud-charts-grid,
-::deep .mud-charts-grid{
+::deep .mud-charts-grid {
     stroke: var(--dark);
     stroke-width: 2px;
 }
