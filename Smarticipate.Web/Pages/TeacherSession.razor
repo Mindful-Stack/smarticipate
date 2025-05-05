@@ -394,6 +394,7 @@
                     foreach (var question in activeQuestions)
                     {
                         await QuestionServices.UpdateQuestionEndTimeAsync(question.Id, DateTime.Now);
+                        await LiveSessionServices.StopQuestion();
                     }
                 }
             }
