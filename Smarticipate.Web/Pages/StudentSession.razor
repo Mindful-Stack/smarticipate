@@ -26,12 +26,12 @@
             <div class="questionContainer">
                 <h1>Choose your response (Question #@CurrentQuestionNumber)</h1>
                 <div class="responseOptions">
-                    <button id="tooFast" class="responseBtn tooFast"
-                            @onclick="() => SubmitResponse(ResponseOption.TooFast)"
+                    <button id="tooSlow" class="responseBtn tooSlow"
+                            @onclick="() => SubmitResponse(ResponseOption.TooSlow)"
                             disabled="@_hasAnswered">
-                        <img class="responseBtnImage" src="images/cheetah.svg"
-                             alt="Too fast - cheetah"/>
-                        <p class="optionText">Even cheetahs need to pace themselves. Let's take a breather.</p>
+                        <img class="responseBtnImage" src="images/sloth.svg" alt="Too slow - sloth"/>
+                        <p class="optionText">We're moving slower than a herd of sloths stampeding through peanut
+                            butter! Let's pick it up!</p>
                     </button>
                     <button id="perfect" class="responseBtn perfect"
                             @onclick="() => SubmitResponse(ResponseOption.Perfect)"
@@ -39,12 +39,12 @@
                         <img class="responseBtnImage" src="images/metronome.svg" alt="Perfect - metronome"/>
                         <p class="optionText">I’m in a groove, right now!</p>
                     </button>
-                    <button id="tooSlow" class="responseBtn tooSlow"
-                            @onclick="() => SubmitResponse(ResponseOption.TooSlow)"
+                    <button id="tooFast" class="responseBtn tooFast"
+                            @onclick="() => SubmitResponse(ResponseOption.TooFast)"
                             disabled="@_hasAnswered">
-                        <img class="responseBtnImage" src="images/sloth.svg" alt="Too slow - sloth"/>
-                        <p class="optionText">We're moving slower than a herd of sloths stampeding through peanut
-                            butter! Let's pick it up!</p>
+                        <img class="responseBtnImage" src="images/cheetah.svg"
+                             alt="Too fast - cheetah"/>
+                        <p class="optionText">Even cheetahs need to pace themselves. Let's take a breather.</p>
                     </button>
 
                 </div>

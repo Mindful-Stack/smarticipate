@@ -63,9 +63,9 @@
                                               Height="@_chartHeight"
                                               ChartOptions="@_chartOptions">
                                         <CustomGraphics>
-                                            <text x="105" y="105%" class="tooFast count">@_tooFastCount</text>
+                                            <text x="105" y="105%" class="tooSlow count">@_tooSlowCount</text>
                                             <text x="348" y="105%" class="perfect count">@_perfectCount</text>
-                                            <text x="590" y="105%" class="tooSlow count">@_tooSlowCount</text>
+                                            <text x="590" y="105%" class="tooFast count">@_tooFastCount</text>
                                         </CustomGraphics>
                                     </MudChart>
                                 }
@@ -128,14 +128,14 @@
     //CHART
     private bool _showResponseChart = false;
     private List<ChartSeries> _responseSeries = new();
-    private string[] _responseLabels = { "Too Fast", "Perfect", "Too Slow" };
+    private string[] _responseLabels = { "Too Slow", "Perfect", "Too Fast" };
     private string _chartHeight = "280px";
     private string _chartWidth = "100%";
 
     private ChartOptions _chartOptions = new()
     {
         InterpolationOption = InterpolationOption.NaturalSpline,
-        ChartPalette = new string[] { "var(--red)", "var(--teal)", "var(--orange)" },
+        ChartPalette = new string[] { "var(--orange)", "var(--teal)", "var(--red)" },
         ShowToolTips = true,
         YAxisLines = true,
         XAxisLines = true,
@@ -423,16 +423,16 @@
             if (latestQuestion is null)
                 return;
 
-            _tooFastCount = latestQuestion.Responses.Count(r => r.SelectedOption == ResponseOption.TooFast);
-            _perfectCount = latestQuestion.Responses.Count(r => r.SelectedOption == ResponseOption.Perfect);
             _tooSlowCount = latestQuestion.Responses.Count(r => r.SelectedOption == ResponseOption.TooSlow);
+            _perfectCount = latestQuestion.Responses.Count(r => r.SelectedOption == ResponseOption.Perfect);
+            _tooFastCount = latestQuestion.Responses.Count(r => r.SelectedOption == ResponseOption.TooFast);
 
             _responseSeries = new List<ChartSeries>
             {
                 new ChartSeries
                 {
-                    Name = "Too Fast",
-                    Data = new double[] { _tooFastCount, 0, 0 },
+                    Name = "Too Slow",
+                    Data = new double[] { _tooSlowCount,0, 0 },
                 },
                 new ChartSeries
                 {
@@ -441,8 +441,8 @@
                 },
                 new ChartSeries
                 {
-                    Name = "Too Slow",
-                    Data = new double[] { 0, 0, _tooSlowCount },
+                    Name = "Too Fast",
+                    Data = new double[] { 0, 0, _tooFastCount },
                 }
             };
             _showResponseChart = true;
