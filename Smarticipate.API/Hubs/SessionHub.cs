@@ -82,7 +82,7 @@ public class SessionHub : Hub
             await Clients.Group($"teacher-{sessionCode}").SendAsync("StudentCountChanged", studentCount);
             Console.WriteLine($"Sent StudentCountChanged({studentCount}) to teacher-{sessionCode}");
 
-            var activeQuestion = GetActiveQuestionForSession(sessionCode); // You'll need to implement this method
+            var activeQuestion = GetActiveQuestionForSession(sessionCode); 
             if (activeQuestion.HasValue)
             {
                 // Send active question details directly to the newly connected student
