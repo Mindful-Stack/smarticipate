@@ -11,7 +11,6 @@ public class CreateSession : IEndpoint
         app.MapPost("api/sessions", Handler)
             .WithTags("Sessions")
             .WithName("Create Session")
-            .WithOpenApi()
             .Accepts<Request>("application/json")
             .Produces<Response>(StatusCodes.Status201Created);
     }

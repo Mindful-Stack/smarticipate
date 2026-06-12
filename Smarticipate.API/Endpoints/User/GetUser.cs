@@ -17,7 +17,6 @@ public class GetUser : IEndpoint
             })
             .WithTags("Users")
             .WithName("Get User by Email")
-            .WithOpenApi()
             .Produces<string>(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status404NotFound);
     }

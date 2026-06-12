@@ -13,7 +13,6 @@ public class GetAllSessionsByUserId : IEndpoint
         app.MapGet("api/sessions/{userId}", Handler)
             .WithTags("Sessions")
             .WithName("Get Sessions by User")
-            .WithOpenApi()
             .Produces<List<SessionResponse>>(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status404NotFound);
     }

@@ -12,7 +12,6 @@ public class GetActiveSession : IEndpoint
         app.MapGet("api/sessions/active/{userId}", Handler)
             .WithTags("Sessions")
             .WithName("Get Active Session")
-            .WithOpenApi()
             .Produces<ActiveSessionResponse>(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status404NotFound);
     }

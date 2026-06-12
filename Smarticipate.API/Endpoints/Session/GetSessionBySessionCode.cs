@@ -12,7 +12,6 @@ public class GetSessionBySessionCode : IEndpoint
         app.MapGet("api/sessions/code/{sessionCode}", Handler)
             .WithTags("Sessions")
             .WithName("Get Session by Session Code")
-            .WithOpenApi()
             .Produces<SessionResponse>(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status404NotFound);
     }

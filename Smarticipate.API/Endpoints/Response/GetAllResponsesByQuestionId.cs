@@ -12,7 +12,6 @@ public class GetAllResponsesByQuestionId : IEndpoint
         app.MapGet("api/responses/{questionId}", Handler)
             .WithTags("Responses")
             .WithName("Get Responses by Question Id")
-            .WithOpenApi()
             .Produces<List<Response>>(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status404NotFound);
     }

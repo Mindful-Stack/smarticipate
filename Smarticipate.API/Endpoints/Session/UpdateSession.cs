@@ -11,7 +11,6 @@ public class UpdateSession : IEndpoint
         app.MapPut("api/sessions/{sessionCode}", Handler)
             .WithTags("Sessions")
             .WithName("Update Session")
-            .WithOpenApi()
             .Accepts<Request>("application/json")
             .Produces(StatusCodes.Status204NoContent)
             .Produces(StatusCodes.Status404NotFound);

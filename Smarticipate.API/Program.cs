@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OpenApi;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 using Smarticipate.API.Data.Identity;
@@ -13,10 +14,10 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 //Identity DbContext
 builder.Services.AddDbContext<UserDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // builder.Services.AddDbContext<SmarticipateApiDbContext>(options =>
-//     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+//     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 //Identity Endpoints
 builder.Services.AddIdentityApiEndpoints<User>(options =>
@@ -59,7 +60,21 @@ builder.Services.Configure<JsonOptions>(options =>
 });
 
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
+builder.Services.AddOpenApi(options =>
+{
+    // .NET 10 generates OpenAPI 3.1 by default and is strict about duplicate schema ids.
+    // Our endpoints each declare nested `Request`/`Response` records that share simple names,
+    // so prefix the schema id with the declaring endpoint type (e.g. "CreateSessionRequest")
+    // to keep every schema reference unique. Without this, Scalar fails to render the endpoints.
+    options.CreateSchemaReferenceId = jsonTypeInfo =>
+    {
+        var defaultId = OpenApiOptions.CreateDefaultSchemaReferenceId(jsonTypeInfo);
+        var declaringTypeName = jsonTypeInfo.Type.DeclaringType?.Name;
+        return defaultId is not null && declaringTypeName is not null
+            ? declaringTypeName + defaultId
+            : defaultId;
+    };
+});
 
 //Configure CORS
 builder.Services.AddCors(options =>

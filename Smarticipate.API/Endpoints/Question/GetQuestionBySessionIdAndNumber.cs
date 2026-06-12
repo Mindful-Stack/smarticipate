@@ -12,7 +12,6 @@ public class GetQuestionBySessionIdAndNumber : IEndpoint
         app.MapGet("api/questions/{sessionId}/{questionNumber}", Handler)
             .WithTags("Questions")
             .WithName("Get Question by Session ID and Question Number")
-            .WithOpenApi()
             .Produces<QuestionResponse>(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status404NotFound);
     }
