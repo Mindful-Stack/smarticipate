@@ -9,6 +9,9 @@ using Smarticipate.API.Endpoints;
 using Smarticipate.API.Hubs;
 using JsonOptions = Microsoft.AspNetCore.Http.Json.JsonOptions;
 
+// Preserve SQL Server-era local-time storage on Postgres timestamptz columns.
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
