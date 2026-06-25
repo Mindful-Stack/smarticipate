@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Smarticipate.API.Data.Identity;
 
 namespace Smarticipate.API.Endpoints.Session;
@@ -17,6 +18,7 @@ public class CreateSession : IEndpoint
 
     public record Request(
         [FromBody] string SessionCode,
+        [FromBody] string? Name,
         [FromBody] DateTime? StartTime,
         [FromBody] DateTime? EndTime,
         [FromBody] string UserId
@@ -30,9 +32,19 @@ public class CreateSession : IEndpoint
         Request request,
         [FromServices] UserDbContext db)
     {
+        // Enforce one active session per teacher: close any currently-open ones first so GetActive (orders by StartTime desc) is unambiguous
+        var openSessions = await db.Sessions
+            .Where(s => s.UserId == request.UserId && s.EndTime == null)
+            .ToListAsync();
+        foreach (var s in openSessions)
+        {
+            s.EndTime = DateTime.Now;
+        }
+        
         var newSession = new Core.Entities.Session
         {
             SessionCode = request.SessionCode,
+            Name = request.Name,
             StartTime = request.StartTime,
             EndTime = request.EndTime,
             UserId = request.UserId
