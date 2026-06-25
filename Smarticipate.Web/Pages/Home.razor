@@ -56,7 +56,7 @@
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         if (authState.User.Identity?.IsAuthenticated == true)
         {
-            Navigation.NavigateTo("/TeacherSession");
+            Navigation.NavigateTo("/Dashboard");
         }
         _isLoading = false;
     }
