@@ -7,6 +7,7 @@ using Scalar.AspNetCore;
 using Smarticipate.API.Data.Identity;
 using Smarticipate.API.Endpoints;
 using Smarticipate.API.Hubs;
+using Smarticipate.API.Services;
 using JsonOptions = Microsoft.AspNetCore.Http.Json.JsonOptions;
 
 // Preserve SQL Server-era local-time storage on Postgres timestamptz columns.
@@ -90,6 +91,10 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.AddSignalR();
+
+// Live feedback
+builder.Services.AddSingleton<LiveFeedbackStore>();
+builder.Services.AddHostedService<FeedbackSnapshotService>();
 
 var app = builder.Build();
 
