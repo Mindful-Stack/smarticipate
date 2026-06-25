@@ -1,14 +1,22 @@
 ﻿using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
+using Smarticipate.API.Data.Identity;
+using Smarticipate.API.Services;
+using Smarticipate.Core.Entities;
 
 namespace Smarticipate.API.Hubs;
 
-public class SessionHub : Hub
+public class SessionHub(LiveFeedbackStore feedbackStore, IServiceScopeFactory scopeFactory)
+    : Hub
 {
     private static readonly Dictionary<string, HashSet<string>> _teacherConnections = new();
     private static readonly Dictionary<string, HashSet<string>> _studentConnections = new();
 
     private static readonly Dictionary<string, (int QuestionId, int Duration, DateTime StartTime)> _activeQuestions =
         new();
+
+    private readonly LiveFeedbackStore _feedbackStore = feedbackStore;
+    private readonly IServiceScopeFactory _scopeFactory = scopeFactory;
 
     public async Task JoinSession(string sessionCode)
     {
@@ -22,7 +30,118 @@ public class SessionHub : Hub
 
     public async Task EndSession(string sessionCode)
     {
+        // Persist a final aggregate, then clear the volatile state, then notify everyone
+        using (var scope = _scopeFactory.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<UserDbContext>();
+            await FeedbackSnapshotWriter.WriteAsync(db, _feedbackStore, sessionCode);
+        }
+
+        _feedbackStore.Reset(sessionCode);
         await Clients.Group(sessionCode).SendAsync("SessionEnded");
+    }
+
+    // Pulled by the overlay AFTER it subscribes, so the replay can't fire too early
+    // allowSnapshotFallback: seed from the last snapshot only when there's no live data
+    public async Task RequestTeacherState(string sessionCode, bool allowSnapshotFallback)
+    {
+        var agg = _feedbackStore.GetAggregate(sessionCode);
+
+        using (var scope = _scopeFactory.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<UserDbContext>();
+
+            var session = await db.Sessions
+                .Include(s => s.StudentQuestions)
+                .OrderByDescending(s => s.StartTime)
+                .FirstOrDefaultAsync(s => s.SessionCode == sessionCode);
+
+            if (session is not null)
+            {
+                // Replay open (non-dismissed) questions so the queue rebuilds
+                foreach (var q in session.StudentQuestions
+                             .Where(q => q.DismissedAt == null)
+                             .OrderBy(q => q.CreatedAt))
+                {
+                    await Clients.Caller.SendAsync("QuestionReceived", q.Id, q.Text, q.CreatedAt);
+                }
+
+                // Resume fallback: only when there is no live data to show
+                if (agg.RespondentCount == 0 && allowSnapshotFallback)
+                {
+                    var snap = await db.FeedbackSnapshots
+                        .Where(fs => fs.SessionId == session.Id)
+                        .OrderByDescending(fs => fs.Timestamp)
+                        .FirstOrDefaultAsync();
+                    if (snap is not null)
+                        agg = new FeedbackAggregate(snap.PaceCounts, snap.UnderstandingCounts, snap.RespondentCount);
+                }
+            }
+        }
+
+        await Clients.Caller.SendAsync("FeedbackUpdated", agg.PaceCounts, agg.UnderstandingCounts,
+            agg.RespondentCount);
+    }
+
+    // The student sends both current slider values; this edits their existing (seeded) entry.
+    public async Task UpdateFeedback(string sessionCode, int pace, int understanding)
+    {
+        _feedbackStore.Set(sessionCode, Context.ConnectionId, pace, understanding);
+        var agg = _feedbackStore.GetAggregate(sessionCode);
+        await Clients.Group($"teacher-{sessionCode}").SendAsync("FeedbackUpdated", agg.PaceCounts,
+            agg.UnderstandingCounts, agg.RespondentCount);
+    }
+
+    // Teacher reset: keep everyone counted but snap them all back to neutral.
+    public async Task ResetFeedback(string sessionCode)
+    {
+        _feedbackStore.ResetToNeutral(sessionCode);
+
+        // tells students to snap their overlays back to neutral
+        await Clients.Group($"student-{sessionCode}").SendAsync("FeedbackReset");
+        var agg = _feedbackStore.GetAggregate(sessionCode);
+        await Clients.Group($"teacher-{sessionCode}").SendAsync("FeedbackUpdated",
+            agg.PaceCounts, agg.UnderstandingCounts, agg.RespondentCount);
+    }
+
+    public async Task SubmitQuestion(string sessionCode, string text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return;
+        text = text.Trim();
+
+        StudentQuestion question;
+        using (var scope = _scopeFactory.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<UserDbContext>();
+            var session = await db.Sessions
+                .OrderByDescending(s => s.StartTime)
+                .FirstOrDefaultAsync(s => s.SessionCode == sessionCode);
+            if (session is null) return;
+            question = new StudentQuestion
+            {
+                Text = text, SessionId = session.Id
+            };
+            db.StudentQuestions.Add(question);
+            await db.SaveChangesAsync();
+        }
+
+        await Clients.Group($"teacher-{sessionCode}")
+            .SendAsync("QuestionReceived", question.Id, question.Text, question.CreatedAt);
+    }
+
+    public async Task DismissQuestion(string sessionCode, int questionId)
+    {
+        using (var scope = _scopeFactory.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<UserDbContext>();
+            var question = await db.StudentQuestions.FindAsync(questionId);
+            if (question is null) return;
+            question.DismissedAt = DateTime.Now;
+            await db.SaveChangesAsync();
+        }
+
+        // Keep multiple teacher tabs in sync.
+        await Clients.Group($"teacher-{sessionCode}").SendAsync("QuestionDismissed", questionId);
     }
 
     public async Task RegisterAsTeacher(string sessionCode)
@@ -41,6 +160,7 @@ public class SessionHub : Hub
                 {
                     _teacherConnections[sessionCode] = new HashSet<string>();
                 }
+
                 _teacherConnections[sessionCode].Add(connectionId);
             }
 
@@ -82,6 +202,12 @@ public class SessionHub : Hub
             await Clients.Group($"teacher-{sessionCode}").SendAsync("StudentCountChanged", studentCount);
             Console.WriteLine($"Sent StudentCountChanged({studentCount}) to teacher-{sessionCode}");
 
+            // Count this student immediately at neutral; they edit their value by moving a slider.
+            _feedbackStore.Seed(sessionCode, connectionId);
+            var seededAgg = _feedbackStore.GetAggregate(sessionCode);
+            await Clients.Group($"teacher-{sessionCode}").SendAsync("FeedbackUpdated",
+                seededAgg.PaceCounts, seededAgg.UnderstandingCounts, seededAgg.RespondentCount);
+
             var activeQuestion = GetActiveQuestionForSession(sessionCode);
             if (activeQuestion.HasValue)
             {
@@ -122,6 +248,12 @@ public class SessionHub : Hub
         }
 
         await Clients.Group($"teacher-{sessionCode}").SendAsync("StudentCountChanged", studentCount);
+
+        // Also drop this student's live feedback and rebroadcast the aggregate.
+        _feedbackStore.Remove(sessionCode, connectionId);
+        var feedbackAgg = _feedbackStore.GetAggregate(sessionCode);
+        await Clients.Group($"teacher-{sessionCode}").SendAsync("FeedbackUpdated",
+            feedbackAgg.PaceCounts, feedbackAgg.UnderstandingCounts, feedbackAgg.RespondentCount);
     }
 
     public async Task StartQuestion(string sessionCode, int questionId, int duration)
@@ -143,7 +275,7 @@ public class SessionHub : Hub
 
         await Clients.Group(sessionCode).SendAsync("QuestionStopped");
     }
-    
+
     private (int QuestionId, int Duration, int RemainingTime)? GetActiveQuestionForSession(string sessionCode)
     {
         lock (_activeQuestions)
@@ -153,11 +285,11 @@ public class SessionHub : Hub
                 //Check time passed since question started
                 var elapsed = (int)(DateTime.Now - questionInfo.StartTime).TotalSeconds;
                 var remaining = Math.Max(0, questionInfo.Duration - elapsed);
-            
+
                 return (questionInfo.QuestionId, questionInfo.Duration, remaining);
             }
         }
-    
+
         return null;
     }
 
@@ -230,6 +362,15 @@ public class SessionHub : Hub
         }
 
         Console.WriteLine($"Student left session {studentSession}, new count: {studentCount}");
+
+        // Remove this connection's live feedback and rebroadcast the aggregate.
+        var feedbackSession = _feedbackStore.RemoveConnectionEverywhere(Context.ConnectionId);
+        if (feedbackSession is not null)
+        {
+            var agg = _feedbackStore.GetAggregate(feedbackSession);
+            await Clients.Group($"teacher-{feedbackSession}").SendAsync("FeedbackUpdated",
+                agg.PaceCounts, agg.UnderstandingCounts, agg.RespondentCount);
+        }
 
         await base.OnDisconnectedAsync(exception);
     }

@@ -7,21 +7,22 @@ namespace Smarticipate.API.Services;
 public class LiveFeedbackStore
 {
     public const int Steps = 5;
+    public const int Neutral = (Steps + 1) / 2; // middle step (3) — every student starts here
 
     // sessionCode -> (connectionId -> feedback)
     private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, StudentFeedback>> _feedback = new();
 
-    public record StudentFeedback(int? Pace, int? Understanding);
+    public record StudentFeedback(int Pace, int Understanding);
 
-    public void Set(string sessionCode, string connectionId, int? pace, int? understanding)
+    // Seed a newly-joined student at neutral so connected-but-silent students are still counted.
+    public void Seed(string sessionCode, string connectionId)
+        => Set(sessionCode, connectionId, Neutral, Neutral);
+
+    // Upsert keyed by connectionId, so moving a slider EDITS the student's value (never adds).
+    public void Set(string sessionCode, string connectionId, int pace, int understanding)
     {
-        if (pace is null && understanding is null) return;
-
         var session = _feedback.GetOrAdd(sessionCode, _ => new ConcurrentDictionary<string, StudentFeedback>());
-        session.AddOrUpdate(
-            connectionId,
-            _ => new StudentFeedback(pace, understanding),
-            (_, existing) => new StudentFeedback(pace ?? existing.Pace, understanding ?? existing.Understanding));
+        session[connectionId] = new StudentFeedback(pace, understanding);
     }
 
     public void Remove(string sessionCode, string connectionId)
@@ -42,7 +43,16 @@ public class LiveFeedbackStore
         return null;
     }
 
+    // Full clear — used when a session ends.
     public void Reset(string sessionCode) => _feedback.TryRemove(sessionCode, out _);
+
+    // Teacher "reset feedback": keep everyone connected but snap them all back to neutral.
+    public void ResetToNeutral(string sessionCode)
+    {
+        if (_feedback.TryGetValue(sessionCode, out var session))
+            foreach (var connId in session.Keys)
+                session[connId] = new StudentFeedback(Neutral, Neutral);
+    }
 
     public FeedbackAggregate GetAggregate(string sessionCode)
     {
@@ -54,11 +64,9 @@ public class LiveFeedbackStore
         {
             foreach (var fb in session.Values)
             {
-                // Only count an axis the student has actually moved (null axes are skipped).
-                if (fb.Pace is >= 1 and <= Steps) pace[fb.Pace.Value - 1]++;
-                if (fb.Understanding is >= 1 and <= Steps) understanding[fb.Understanding.Value - 1]++;
-                // Respondent = engaged at least one axis (true for every stored entry).
-                if (fb.Pace is not null || fb.Understanding is not null) respondents++;
+                if (fb.Pace is >= 1 and <= Steps) pace[fb.Pace - 1]++;
+                if (fb.Understanding is >= 1 and <= Steps) understanding[fb.Understanding - 1]++;
+                respondents++; // every connected student counts (seeded at neutral)
             }
         }
 
