@@ -20,6 +20,7 @@ public class GetAllSessionsByUserId : IEndpoint
     public record SessionResponse(
         int Id,
         string SessionCode,
+        string? Name,
         DateTime? StartTime,
         DateTime? EndTime,
         bool IsActive,
@@ -62,6 +63,7 @@ public class GetAllSessionsByUserId : IEndpoint
             .Select(s => new SessionResponse(
                 s.Id,
                 s.SessionCode,
+                s.Name,
                 s.StartTime,
                 s.EndTime,
                 s.EndTime == null,
