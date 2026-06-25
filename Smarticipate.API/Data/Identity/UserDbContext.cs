@@ -9,6 +9,8 @@ public class UserDbContext : IdentityDbContext<User>
     public DbSet<Session> Sessions { get; set; }
     public DbSet<Question> Questions { get; set; }
     public DbSet<Response> Responses { get; set; }
+    public DbSet<FeedbackSnapshot> FeedbackSnapshots { get; set; }
+    public DbSet<StudentQuestion> StudentQuestions { get; set; }
     public UserDbContext(DbContextOptions<UserDbContext> options) 
         : base(options)
     {

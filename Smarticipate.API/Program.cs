@@ -19,9 +19,6 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<UserDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// builder.Services.AddDbContext<SmarticipateApiDbContext>(options =>
-//     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
-
 //Identity Endpoints
 builder.Services.AddIdentityApiEndpoints<User>(options =>
 {
