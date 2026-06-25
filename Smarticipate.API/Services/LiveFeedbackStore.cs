@@ -3,7 +3,7 @@ using System.Collections.Concurrent;
 namespace Smarticipate.API.Services;
 
 // Volatile in-memory live feedback for running sessions
-// Singleton so the hub and the snapshot background services share one source of truth
+// Singleton so the hub and the snapshot background service share one source of truth
 public class LiveFeedbackStore
 {
     public const int Steps = 5;
@@ -11,12 +11,17 @@ public class LiveFeedbackStore
     // sessionCode -> (connectionId -> feedback)
     private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, StudentFeedback>> _feedback = new();
 
-    public record StudentFeedback(int Pace, int Understanding);
+    public record StudentFeedback(int? Pace, int? Understanding);
 
-    public void Set(string sessionCode, string connectionId, int pace, int understanding)
+    public void Set(string sessionCode, string connectionId, int? pace, int? understanding)
     {
+        if (pace is null && understanding is null) return;
+
         var session = _feedback.GetOrAdd(sessionCode, _ => new ConcurrentDictionary<string, StudentFeedback>());
-        session[connectionId] = new StudentFeedback(pace, understanding);
+        session.AddOrUpdate(
+            connectionId,
+            _ => new StudentFeedback(pace, understanding),
+            (_, existing) => new StudentFeedback(pace ?? existing.Pace, understanding ?? existing.Understanding));
     }
 
     public void Remove(string sessionCode, string connectionId)
@@ -49,9 +54,11 @@ public class LiveFeedbackStore
         {
             foreach (var fb in session.Values)
             {
-                if (fb.Pace is >= 1 and <= Steps) pace[fb.Pace - 1]++;
-                if (fb.Understanding is >= 1 and <= Steps) understanding[fb.Understanding - 1]++;
-                respondents++;
+                // Only count an axis the student has actually moved (null axes are skipped).
+                if (fb.Pace is >= 1 and <= Steps) pace[fb.Pace.Value - 1]++;
+                if (fb.Understanding is >= 1 and <= Steps) understanding[fb.Understanding.Value - 1]++;
+                // Respondent = engaged at least one axis (true for every stored entry).
+                if (fb.Pace is not null || fb.Understanding is not null) respondents++;
             }
         }
 
