@@ -1,0 +1,100 @@
+.dashboard {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    padding: 2rem 2.5rem;
+    width: 100%;
+}
+
+.dashboard h1 {
+    font-family: var(--ekwarg);
+    color: var(--dark);
+    text-decoration: underline;
+    text-underline-offset: var(--underline-offest);
+}
+
+/* ########### NEW SESSION ########### */
+.newSession {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.sessionNameInput {
+    flex: 1 1 18rem;
+    max-width: 28rem;
+    font-family: var(--inter);
+    font-size: 1rem;
+    color: var(--dark);
+    background-color: var(--beige);
+    border: 2px solid var(--dark);
+    border-radius: var(--border-radius);
+    padding: var(--padding-box);
+    outline: none;
+
+    &::placeholder {
+        color: var(--purple);
+    }
+
+    &:focus {
+        border: 2px solid var(--red);
+    }
+}
+
+/* ########### SESSION LIST ########### */
+.sessionList {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: .75rem;
+}
+
+.sessionRow {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    background-color: var(--beige);
+    border: 2px solid var(--dark);
+    border-radius: var(--border-radius);
+}
+
+.sessionName {
+    font-family: var(--ekwarg);
+    font-size: 1.25rem;
+    color: var(--dark);
+}
+
+.sessionMeta {
+    font-family: var(--inter);
+    font-size: .9rem;
+    color: var(--purple);
+}
+
+.sessionActions {
+    display: flex;
+    gap: .5rem;
+    justify-content: flex-end;
+}
+
+.cancelBtn {
+    padding: var(--padding-box);
+    border: 2px solid var(--dark);
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    font-family: var(--inter);
+    font-size: 1rem;
+    font-weight: bold;
+    color: var(--dark);
+    background-color: transparent;
+    transition: all .3s ease-in-out;
+
+    &:hover {
+        background-color: var(--dark);
+        color: var(--beige);
+    }
+}
