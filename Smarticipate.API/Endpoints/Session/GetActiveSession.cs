@@ -9,7 +9,7 @@ public class GetActiveSession : IEndpoint
 {
     public static void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapGet("api/sessions/active/{userId}", Handler)
+        app.MapGet("api/sessions/active/{userId}", Handle)
             .WithTags("Sessions")
             .WithName("Get Active Session")
             .Produces<ActiveSessionResponse>(StatusCodes.Status200OK)
@@ -40,7 +40,7 @@ public class GetActiveSession : IEndpoint
         DateTime TimeStamp
     );
 
-    private static async Task<IResult> Handler(
+    private static async Task<IResult> Handle(
         string userId, 
         [FromServices] UserDbContext db)
     {

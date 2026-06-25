@@ -9,7 +9,7 @@ public class GetQuestionBySessionIdAndNumber : IEndpoint
 {
     public static void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapGet("api/questions/{sessionId}/{questionNumber}", Handler)
+        app.MapGet("api/questions/{sessionId}/{questionNumber}", Handle)
             .WithTags("Questions")
             .WithName("Get Question by Session ID and Question Number")
             .Produces<QuestionResponse>(StatusCodes.Status200OK)
@@ -32,7 +32,7 @@ public class GetQuestionBySessionIdAndNumber : IEndpoint
         int QuestionId
     );
 
-    private static async Task<IResult> Handler(
+    private static async Task<IResult> Handle(
         int sessionId,
         int questionNumber,
         [FromServices] UserDbContext db

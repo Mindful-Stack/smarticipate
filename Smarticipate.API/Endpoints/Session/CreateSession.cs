@@ -8,7 +8,7 @@ public class CreateSession : IEndpoint
 {
     public static void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapPost("api/sessions", Handler)
+        app.MapPost("api/sessions", Handle)
             .WithTags("Sessions")
             .WithName("Create Session")
             .Accepts<Request>("application/json")
@@ -26,7 +26,7 @@ public class CreateSession : IEndpoint
         int Id
     );
 
-    private static async Task<Created<Response>> Handler(
+    private static async Task<Created<Response>> Handle(
         Request request,
         [FromServices] UserDbContext db)
     {

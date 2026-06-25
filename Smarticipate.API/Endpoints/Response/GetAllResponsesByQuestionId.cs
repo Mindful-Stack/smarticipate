@@ -9,7 +9,7 @@ public class GetAllResponsesByQuestionId : IEndpoint
 {
     public static void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapGet("api/responses/{questionId}", Handler)
+        app.MapGet("api/responses/{questionId}", Handle)
             .WithTags("Responses")
             .WithName("Get Responses by Question Id")
             .Produces<List<Response>>(StatusCodes.Status200OK)
@@ -23,7 +23,7 @@ public class GetAllResponsesByQuestionId : IEndpoint
         int QuestionId
     );
 
-    private static async Task<IResult> Handler(
+    private static async Task<IResult> Handle(
         int questionId, 
         [FromServices] UserDbContext db)
     {
