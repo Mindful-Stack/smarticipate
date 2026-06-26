@@ -6,11 +6,37 @@
     width: 100%;
 }
 
+.signInPrompt {
+    padding: 2rem 2.5rem;
+    font-family: var(--inter);
+    font-weight: bold;
+    font-size: 1.5rem;
+    color: var(--dark);
+}
+
+#signIn {
+    font-family: var(--ekwarg);
+    font-style: italic;
+    color: var(--red);
+    text-decoration: underline;
+    text-underline-offset: var(--underline-offest);
+
+    &:hover {
+        text-decoration: none;
+        cursor: pointer;
+    }
+
+    &:visited {
+        color: var(--teal);
+    }
+}
+
 .dashboard h1 {
     font-family: var(--ekwarg);
     color: var(--dark);
     text-decoration: underline;
     text-underline-offset: var(--underline-offest);
+    font-weight: bold;
 }
 
 /* ########### NEW SESSION ########### */

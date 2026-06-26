@@ -3,6 +3,7 @@
 @inject LiveSessionServices LiveSessionServices
 @inject SessionServices SessionServices
 @inject ResponseServices ResponseServices
+@inject IJSRuntime JS
 @implements IAsyncDisposable
 
 <PageTitle>Student</PageTitle>
@@ -205,6 +206,10 @@
 
 
                 Console.WriteLine("Successfully registered all event handlers");
+
+                // A page refresh recreates the whole WASM app, so re-join the session the
+                // student was in (if it's still active) instead of dropping them on the code form.
+                await TryRestoreSessionAsync();
             }
             else
             {
@@ -297,11 +302,12 @@
         // _sessionEnded = true;
         // _activeQuestionId = null;
         // StateHasChanged();
-        InvokeAsync(() =>
+        InvokeAsync(async () =>
         {
             _isInSession = false;
             _sessionEnded = true;
             ActiveQuestionId = null;
+            await ClearSavedSessionAsync();
             StateHasChanged(); // Notify Blazor
         });
     }
@@ -310,13 +316,14 @@
     {
         try
         {
-            InvokeAsync(() =>
+            InvokeAsync(async () =>
             {
                 Console.WriteLine("StudentSession: Processing teacher disconnection");
 
                 _isInSession = false;
                 _sessionEnded = true;
                 _activeQuestionId = null;
+                await ClearSavedSessionAsync();
                 Console.WriteLine("StudentSession: Updated state, calling StateHasChanged");
                 StateHasChanged();
             });
@@ -366,6 +373,7 @@
 
                 _isInSession = true;
                 _sessionEnded = false;
+                await SaveSessionAsync(_sessionCode);
             }
             else
             {
@@ -406,6 +414,67 @@
         _isInSession = false;
         _sessionEnded = false;
         ActiveQuestionId = null;
+        await ClearSavedSessionAsync();
+    }
+
+    private const string SessionStorageKey = "smarticipate.student.sessionCode";
+
+    // Re-join the session the student was in after a page refresh, as long as it's still active.
+    private async Task TryRestoreSessionAsync()
+    {
+        try
+        {
+            var savedCode = await JS.InvokeAsync<string>("sessionStorage.getItem", SessionStorageKey);
+            if (string.IsNullOrWhiteSpace(savedCode))
+            {
+                return;
+            }
+
+            var session = await SessionServices.GetSessionByCodeAsync(savedCode);
+            if (session is not null && session.IsActive && LiveSessionServices.IsConnected)
+            {
+                _sessionCode = savedCode;
+                await LiveSessionServices.JoinSession(savedCode);
+                await Task.Delay(500);
+                await LiveSessionServices.RegisterAsStudent(savedCode);
+                _isInSession = true;
+                _sessionEnded = false;
+                Console.WriteLine($"Restored student session {savedCode} after reload");
+            }
+            else
+            {
+                // Session is gone or ended, so drop the stale code.
+                await ClearSavedSessionAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error restoring session: {ex.Message}");
+        }
+    }
+
+    private async Task SaveSessionAsync(string code)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("sessionStorage.setItem", SessionStorageKey, code);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving session: {ex.Message}");
+        }
+    }
+
+    private async Task ClearSavedSessionAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("sessionStorage.removeItem", SessionStorageKey);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error clearing saved session: {ex.Message}");
+        }
     }
 
     private async Task SubmitResponse(ResponseOption option)

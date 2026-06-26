@@ -90,7 +90,11 @@ builder.Services.AddCors(options =>
         });
 });
 
-builder.Services.AddSignalR();
+builder.Services.AddSignalR(options =>
+{
+    options.KeepAliveInterval = TimeSpan.FromSeconds(5);
+    options.ClientTimeoutInterval = TimeSpan.FromSeconds(15);
+});
 
 // Live feedback
 builder.Services.AddSingleton<LiveFeedbackStore>();
