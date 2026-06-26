@@ -3,6 +3,7 @@
 @inject UserServices UserServices
 @inject QuestionServices QuestionServices
 @inject LiveSessionServices LiveSessionServices
+@inject NavigationManager Navigation
 @implements IAsyncDisposable
 
 <PageTitle>Teacher</PageTitle>
@@ -31,6 +32,9 @@
                 {
                     <div class="activeSessionContainer">
                         <div class="sessionInfo">
+                            <MudIconButton Class="backIcon" Color="Color.Dark"
+                                           Icon="@Icons.Material.Outlined.ArrowBack" Size="Size.Small"
+                                           aria-label="Back to dashboard" OnClick="GoToDashboard"/>
                             <h2 class="activeSessionTitle">Active Session: @_sessionCode </h2>
                             <MudIconButton Class="stopIcon" Color="Color.Error"
                                            Icon="@Icons.Material.Outlined.StopCircle" Size="Size.Small"
@@ -520,6 +524,8 @@
             }, null, _heartbeatInterval, _heartbeatInterval
         );
     }
+
+    private void GoToDashboard() => Navigation.NavigateTo("/Dashboard");
 
     private void HandleStudentCountChanged(int count)
     {
