@@ -141,6 +141,7 @@
 /* ########################## Teacher overlay (Phase 5) ########################## */
 .feedback-overlay.teacher { width: 320px; }
 .reset-btn {
+    margin-left: auto;
     background: transparent;
     border: none;
     color: var(--beige);
