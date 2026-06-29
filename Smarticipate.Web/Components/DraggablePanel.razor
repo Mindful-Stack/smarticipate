@@ -25,6 +25,7 @@
         if (firstRender)
         {
             _module = await JS.InvokeAsync<IJSObjectReference>("import", "./js/draggable.js");
+            await _module.InvokeVoidAsync("makeDraggable", _handle, _panel);
         }
     }
 

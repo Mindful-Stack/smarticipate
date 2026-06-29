@@ -10,6 +10,11 @@
 
 <div class="studentSession">
     <div class="studentSessionContent">
+        @if (_isInSession && !string.IsNullOrEmpty(_sessionCode))
+        {
+            <StudentFeedbackOverlay SessionCode="@_sessionCode"/>
+        }
+        
         @if (_isLoading)
         {
             <MudProgressCircular Color="Color.Dark" Size="Size.Large"/>

@@ -1,0 +1,101 @@
+@inject LiveSessionServices Live
+
+<DraggablePanel Class="feedback-overlay student" Style="top: 90px; right: 20px;">
+    <HeaderContent>
+        <span class="drag-grip" aria-hidden="true"></span>
+        <span class="overlay-title">Live Feedback</span>
+    </HeaderContent>
+    <ChildContent>
+        <div class="slider-row">
+            <span class="emoji">🐢</span>
+            <MudSlider T="int" Min="1" Max="5" Step="1" Value="_pace" ValueChanged="OnPaceChanged" Immediate="true"
+                       TickMarks="true" Color="Color.Primary" Class="fb-slider"/>
+            <span class="emoji">🚀</span>
+        </div>
+        <div class="slider-row">
+            <span class="emoji">😞</span>
+            <MudSlider T="int" Min="1" Max="5" Step="1" Value="_understanding" ValueChanged="OnUnderstandingChanged"
+                       Immediate="true" TickMarks="true" Color="Color.Primary" Class="fb-slider"/>
+            <span class="emoji">🤯</span>
+        </div>
+
+        <button class="ask-btn @(_askOpen ? "active" : "")" @onclick="ToggleAsk">⁉️</button>
+
+        @if (_askOpen)
+        {
+            <div class="ask-box">
+                <textarea @bind="_questionText" placeholder="Ask an anonymous question..."></textarea>
+                <div class="ask-actions">
+                    <button class="submitBtn" @onclick="SendQuestion">Send</button>
+                    <button class="cancelBtn" @onclick="CancelAsk">Cancel</button>
+                </div>
+            </div>
+        }
+
+        @if (_sent)
+        {
+            <p class="ask-sent">Question sent!</p>
+        }
+    </ChildContent>
+</DraggablePanel>
+
+@code {
+    [Parameter, EditorRequired] public string SessionCode { get; set; } = string.Empty;
+    
+    private int _pace = 3;
+    private int _understanding = 3;
+    private bool _askOpen;
+    private bool _sent;
+    private string _questionText = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        Live.OnFeedbackReset -= HandleReset;
+        Live.OnFeedbackReset += HandleReset;
+    }
+
+    private async Task OnPaceChanged(int value)
+    {
+        _pace = value;
+        await Live.UpdateFeedback(SessionCode, _pace, _understanding);
+    }
+
+    private async Task OnUnderstandingChanged(int value)
+    {
+        _understanding = value;
+        await Live.UpdateFeedback(SessionCode, _pace, _understanding);
+    }
+
+    private void ToggleAsk()
+    {
+        _askOpen = !_askOpen;
+        _sent = false;
+    }
+
+    private void CancelAsk()
+    {
+        _questionText = string.Empty;
+        _askOpen = false;
+    }
+
+    private async Task SendQuestion()
+    {
+        if (string.IsNullOrWhiteSpace(_questionText)) return;
+        await Live.SubmitQuestion(SessionCode, _questionText);
+        _questionText = string.Empty;
+        _askOpen = false;
+        _sent = true;
+    }
+
+    private void HandleReset()
+    {
+        InvokeAsync(() =>
+        {
+            _pace = 3;
+            _understanding = 3;
+            StateHasChanged();
+        });
+    }
+
+    public void Dispose() => Live.OnFeedbackReset -= HandleReset;
+}

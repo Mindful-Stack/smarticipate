@@ -1,0 +1,177 @@
+/* ########################## Draggable panel ########################## */
+.draggable-panel {
+    position: fixed;
+    z-index: 1000;
+    width: 300px;
+    background: var(--beige);
+    border: 2px solid var(--dark);
+    border-radius: var(--border-radius);
+    box-shadow: 6px 6px 0 var(--dark);
+    user-select: none;
+    overflow: hidden;
+    font-family: var(--inter);
+    color: var(--dark);
+}
+
+.draggable-handle {
+    cursor: grab;
+    padding: .5rem .75rem;
+    background: var(--teal);
+    color: var(--beige);
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    touch-action: none;
+    border-bottom: 2px solid var(--dark);
+}
+
+.draggable-handle:active { cursor: grabbing; }
+
+/* 2x3 dot grid to signal the panel is draggable */
+.drag-grip {
+    flex: 0 0 auto;
+    width: 10px;
+    height: 15px;
+    background-image: radial-gradient(currentColor 1.1px, transparent 1.4px);
+    background-size: 5px 5px;
+    background-position: 0 1px;
+    opacity: .65;
+}
+
+.overlay-title { font-weight: bold; font-size: 1rem; }
+
+.draggable-body { padding: 1rem; }
+
+.feedback-overlay.student { background: #fde2e4; }
+
+/* ########################## Sliders ########################## */
+.slider-row {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    margin: .9rem 0;
+}
+
+.slider-row .emoji { font-size: 22px; line-height: 1; }
+
+.slider-row .fb-slider { flex: 1; min-width: 0; margin: 0; }
+
+/* Track: same flat 4px height on both the filled and unfilled portions */
+.slider-row .fb-slider .mud-slider-filled { height: 4px; background-color: var(--teal); }
+.slider-row .fb-slider .mud-slider-input::-webkit-slider-runnable-track {
+    height: 4px;
+    border-radius: 2px;
+    background-color: rgba(57, 53, 82, .25);
+}
+.slider-row .fb-slider .mud-slider-input::-moz-range-track {
+    height: 4px;
+    border-radius: 2px;
+    background-color: rgba(57, 53, 82, .25);
+}
+
+/* Thumb: keep MudBlazor's built-in circular thumb, just recolor it */
+.slider-row .fb-slider .mud-slider-input::-webkit-slider-thumb { background-color: var(--teal); }
+.slider-row .fb-slider .mud-slider-input::-moz-range-thumb { background-color: var(--teal); }
+
+/* Ticks: small round dots */
+.slider-row .fb-slider .mud-slider-track-tick {
+    width: 6px;
+    height: 6px;
+    background-color: var(--dark);
+}
+
+/* ########################## Ask a question ########################## */
+.ask-btn {
+    font-size: 22px;
+    line-height: 1;
+    background: var(--beige);
+    border: 2px solid var(--dark);
+    border-radius: var(--border-radius);
+    padding: .35rem .6rem;
+    cursor: pointer;
+    box-shadow: 3px 3px 0 var(--dark);
+    transition: transform .05s ease, box-shadow .05s ease;
+}
+
+.ask-btn:active,
+.ask-btn.active {
+    box-shadow: 1px 1px 0 var(--dark);
+    transform: translate(2px, 2px);
+}
+
+.ask-box { margin-top: .75rem; }
+
+.ask-box textarea {
+    width: 100%;
+    min-height: 64px;
+    resize: vertical;
+    border: 2px solid var(--dark);
+    border-radius: var(--border-radius);
+    background: var(--beige);
+    color: var(--dark);
+    font-family: var(--ekwarg);
+    font-style: italic;
+    padding: var(--padding-box);
+    outline: none;
+}
+
+.ask-box textarea:focus { border-color: var(--red); }
+.ask-box textarea::placeholder { color: var(--dark); opacity: .55; }
+
+.ask-actions { display: flex; align-items: stretch; gap: .6rem; margin-top: .6rem; }
+.ask-actions .submitBtn { width: auto; flex: 1; }
+
+.cancelBtn {
+    background: transparent;
+    border: 2px solid var(--dark);
+    border-radius: var(--border-radius);
+    padding: var(--padding-box);
+    cursor: pointer;
+    font-family: var(--inter);
+    font-weight: bold;
+    font-size: 1rem;
+    color: var(--dark);
+    transition: all .2s ease-in-out;
+}
+
+.cancelBtn:hover { background: var(--dark); color: var(--beige); }
+
+.ask-sent { color: var(--teal); font-weight: bold; margin-top: .5rem; font-size: .9rem; }
+
+/* ########################## Teacher overlay (Phase 5) ########################## */
+.feedback-overlay.teacher { width: 320px; }
+.reset-btn {
+    background: transparent;
+    border: none;
+    color: var(--beige);
+    font-size: 18px;
+    cursor: pointer;
+}
+
+.fb-bar { margin: 12px 0; }
+.fb-label { font-size: 13px; margin-bottom: 4px; }
+.fb-steps { display: flex; align-items: flex-end; gap: 6px; height: 70px; }
+.fb-step {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    height: 100%;
+}
+.fb-fill { width: 100%; background: var(--teal); border-radius: var(--border-radius) var(--border-radius) 0 0; min-height: 2px; }
+.fb-count { font-size: 11px; }
+
+.question-queue { margin-top: 12px; max-height: 220px; overflow-y: auto; }
+.question-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+    background: var(--beige);
+    border: 2px solid var(--dark);
+    border-radius: var(--border-radius);
+    padding: 6px 8px;
+    margin-bottom: 6px;
+}
+.q-close { background: transparent; border: none; cursor: pointer; font-weight: 700; }
