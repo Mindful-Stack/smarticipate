@@ -29,11 +29,17 @@
                     @foreach (var s in _sessions)
                     {
                         <li class="sessionRow" @key="s.Id">
-                            <span
-                                class="sessionName">@(string.IsNullOrWhiteSpace(s.Name) ? s.SessionCode : s.Name)</span>
-                            <span class="sessionMeta">@s.StartTime?.ToString("g") @(s.IsActive ? "(active)" : "")</span>
+                            <span class="sessionName">
+                                @(string.IsNullOrWhiteSpace(s.Name) ? s.SessionCode : s.Name)
+                                @if (s.IsActive)
+                                {
+                                    <span class="liveBadge"><span class="liveDot"></span>Live</span>
+                                }
+                            </span>
+                            <span class="sessionMeta">@s.StartTime?.ToString("g")</span>
                             <span class="sessionActions">
-                                <button class="submitBtn"
+                                <button class="submitBtn" disabled="@(!s.IsActive)"
+                                        title="@(s.IsActive ? null : "Only a live session can be resumed")"
                                         @onclick="() => Restart(s.SessionCode, resume: true)">Resume</button>
                                 <button class="cancelBtn" @onclick="() => Restart(s.SessionCode, resume: false)">Start fresh</button>
                             </span>

@@ -95,6 +95,37 @@
     color: var(--dark);
 }
 
+.liveBadge {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    margin-left: .6rem;
+    padding: .1rem .5rem;
+    font-family: var(--inter);
+    font-size: .7rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--beige);
+    background-color: var(--red);
+    border: 2px solid var(--dark);
+    border-radius: var(--border-radius);
+    vertical-align: middle;
+}
+
+.liveDot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background-color: var(--beige);
+    animation: livePulse 1.2s ease-in-out infinite;
+}
+
+@keyframes livePulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: .25; }
+}
+
 .sessionMeta {
     font-family: var(--inter);
     font-size: .9rem;
@@ -105,6 +136,15 @@
     display: flex;
     gap: .5rem;
     justify-content: flex-end;
+}
+
+/* Resume is only meaningful for the live session; grey it out for ended ones. */
+.sessionActions .submitBtn:disabled,
+.sessionActions .submitBtn:disabled:hover {
+    opacity: .4;
+    cursor: not-allowed;
+    color: var(--dark);
+    background-position: right bottom;
 }
 
 .cancelBtn {

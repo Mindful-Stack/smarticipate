@@ -1,6 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Smarticipate.API.Data.Identity;
+using Smarticipate.API.Hubs;
+using Smarticipate.API.Services;
 
 namespace Smarticipate.API.Endpoints.Session;
 
@@ -17,15 +20,17 @@ public class RestartSession : IEndpoint
 
     private static async Task<IResult> Handle(
         string sessionCode,
-        [FromServices] UserDbContext db)
+        [FromServices] UserDbContext db,
+        [FromServices] LiveFeedbackStore feedbackStore,
+        [FromServices] IHubContext<SessionHub> hub)
     {
         var session = await db.Sessions
             .OrderByDescending(s => s.StartTime)
             .FirstOrDefaultAsync(s => s.SessionCode == sessionCode);
 
         if (session is null) return Results.NotFound();
-        
-        // Enforce one active session per teacher: close any currently-open ones first. Without this, GetActiveSession (orders by StartTime desc) could load the wrong one.        
+
+        // Enforce one active session per teacher: close any currently-open ones first. Without this, GetActiveSession (orders by StartTime desc) could load the wrong one.
         var others = await db.Sessions
             .Where(s => s.UserId == session.UserId && s.EndTime == null && s.Id != session.Id)
             .ToListAsync();
@@ -35,7 +40,14 @@ public class RestartSession : IEndpoint
         session.EndTime = null;             // active again
         session.StartTime = DateTime.Now;   // bump so it sorts to the top in GetActiveSession
         await db.SaveChangesAsync();
+
+        // Release the live state of the sessions we just auto-closed: their students
+        // are still connected and must be told the session ended.
+        foreach (var o in others)
+        {
+            await LiveSessionTerminator.EndAsync(db, feedbackStore, hub, o.SessionCode);
+        }
+
         return Results.NoContent();
-        
     }
 }

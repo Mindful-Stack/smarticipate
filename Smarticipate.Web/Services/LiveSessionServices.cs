@@ -251,11 +251,19 @@ public class LiveSessionServices(NavigationManager navigationManager) : IAsyncDi
         }
     }
 
-    public async Task RequestTeacherState(string sessionCode, bool allowSnapshotFallback)
+    public async Task ClearQuestions(string sessionCode)
     {
         if (IsConnected)
         {
-            await _hubConnection!.InvokeAsync("RequestTeacherState", sessionCode, allowSnapshotFallback);
+            await _hubConnection!.InvokeAsync("ClearQuestions", sessionCode);
+        }
+    }
+
+    public async Task RequestTeacherState(string sessionCode)
+    {
+        if (IsConnected)
+        {
+            await _hubConnection!.InvokeAsync("RequestTeacherState", sessionCode);
         }
     }
 

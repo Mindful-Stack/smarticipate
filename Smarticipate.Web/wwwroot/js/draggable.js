@@ -3,6 +3,8 @@ export function makeDraggable(handle, panel) {
     let startX = 0, startY = 0, originLeft = 0, originTop = 0, dragging = false;
 
     function onDown(e) {
+        // Let clicks on interactive controls in the handle (e.g. the reset button) through.
+        if (e.target.closest('button, a, input, textarea, select')) return;
         dragging = true;
         const rect = panel.getBoundingClientRect();
         originLeft = rect.left;

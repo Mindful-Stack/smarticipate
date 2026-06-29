@@ -1,0 +1,19 @@
+<div class="fb-bar">
+    <div class="fb-label">@Label</div>
+    <div class="fb-steps">
+        @{ var total = Counts.Sum(); } @* this axis's own total (equals the respondent count once everyone's seeded) *@
+        @for (int i = 0; i < Counts.Length; i++)
+        {
+            var pct = total > 0 ? Counts[i] * 100.0 / total : 0;
+            <div class="fb-step">
+                <div class="fb-fill" style="height:@(pct.ToString(System.Globalization.CultureInfo.InvariantCulture))%"></div>
+                <span class="fb-count">@Counts[i]</span>
+            </div>
+        }
+    </div>
+</div>
+@code {
+    [Parameter] public string Label { get; set; } = string.Empty;
+    [Parameter] public int[] Counts { get; set; } = new int[5];
+
+}

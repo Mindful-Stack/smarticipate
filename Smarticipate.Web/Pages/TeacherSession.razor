@@ -80,6 +80,8 @@
                         <MudIcon Icon="@Icons.Material.Outlined.PeopleOutline" Color="Color.Dark" Size="Size.Large"/>
                         @StudentCount
                     </div>
+                    
+                    <TeacherFeedbackOverlay SessionCode="@_sessionCode"></TeacherFeedbackOverlay>
                 }
             </Authorized>
             <NotAuthorized>
@@ -93,6 +95,10 @@
 </div>
 
 @code {
+    [Parameter, SupplyParameterFromQuery(Name = "code")]
+    public string? Code { get; set; }
+    [Parameter, SupplyParameterFromQuery(Name = "mode")]
+    public string? Mode { get; set; }
 
     //SESSION
     private bool _isLoading = true;
@@ -165,6 +171,21 @@
             await LiveSessionServices.JoinSession(_sessionCode);
             await LiveSessionServices.RegisterAsTeacher(_sessionCode);
             Console.WriteLine($"Teacher registered to session {_sessionCode}");
+
+            // "Start fresh" from the dashboard: zero the feedback AND clear the question
+            // queue. Resume keeps both. (Questions are also cleared whenever a session ends.)
+            if (Mode == "reset")
+            {
+                await LiveSessionServices.ResetFeedback(_sessionCode);
+                await LiveSessionServices.ClearQuestions(_sessionCode);
+            }
+
+            // `mode` is a one-shot entry instruction. Strip it so a page refresh
+            // reloads the bare URL and doesn't re-run this on the live session.
+            if (!string.IsNullOrEmpty(Mode))
+            {
+                Navigation.NavigateTo("/TeacherSession", replace: true);
+            }
         }
 
         await CloseActiveQuestionsAsync();
@@ -495,7 +516,8 @@
                     }
                 }
 
-                await LiveSessionServices.EndSession();
+                // Only leave the SignalR group on dispose. Do NOT end the session here:
+                // a reload/navigation must keep the session alive (ending is the Stop button only).
                 await LiveSessionServices.LeaveSession();
             }
             catch (Exception ex)

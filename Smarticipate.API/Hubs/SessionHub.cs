@@ -6,9 +6,15 @@ using Smarticipate.Core.Entities;
 
 namespace Smarticipate.API.Hubs;
 
-public class SessionHub(LiveFeedbackStore feedbackStore, IServiceScopeFactory scopeFactory)
+public class SessionHub(
+    LiveFeedbackStore feedbackStore,
+    IServiceScopeFactory scopeFactory,
+    IHubContext<SessionHub> hubContext)
     : Hub
 {
+    // Grace window before a vanished teacher is reported gone — absorbs a reload/reconnect.
+    private static readonly TimeSpan TeacherDisconnectGrace = TimeSpan.FromSeconds(8);
+
     private static readonly Dictionary<string, HashSet<string>> _teacherConnections = new();
     private static readonly Dictionary<string, HashSet<string>> _studentConnections = new();
 
@@ -17,6 +23,7 @@ public class SessionHub(LiveFeedbackStore feedbackStore, IServiceScopeFactory sc
 
     private readonly LiveFeedbackStore _feedbackStore = feedbackStore;
     private readonly IServiceScopeFactory _scopeFactory = scopeFactory;
+    private readonly IHubContext<SessionHub> _hubContext = hubContext;
 
     public async Task JoinSession(string sessionCode)
     {
@@ -30,20 +37,16 @@ public class SessionHub(LiveFeedbackStore feedbackStore, IServiceScopeFactory sc
 
     public async Task EndSession(string sessionCode)
     {
-        // Persist a final aggregate, then clear the volatile state, then notify everyone
-        using (var scope = _scopeFactory.CreateScope())
-        {
-            var db = scope.ServiceProvider.GetRequiredService<UserDbContext>();
-            await FeedbackSnapshotWriter.WriteAsync(db, _feedbackStore, sessionCode);
-        }
-
-        _feedbackStore.Reset(sessionCode);
-        await Clients.Group(sessionCode).SendAsync("SessionEnded");
+        // Final snapshot + clear live state + dismiss open questions + notify everyone.
+        using var scope = _scopeFactory.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<UserDbContext>();
+        await LiveSessionTerminator.EndAsync(db, _feedbackStore, _hubContext, sessionCode);
     }
 
-    // Pulled by the overlay AFTER it subscribes, so the replay can't fire too early
-    // allowSnapshotFallback: seed from the last snapshot only when there's no live data
-    public async Task RequestTeacherState(string sessionCode, bool allowSnapshotFallback)
+    // Pulled by the overlay AFTER it subscribes, so the replay can't fire too early.
+    // Always reflects live (currently-connected) students; no snapshot fallback, so an
+    // empty session reads as 0 regardless of how it was (re)started.
+    public async Task RequestTeacherState(string sessionCode)
     {
         var agg = _feedbackStore.GetAggregate(sessionCode);
 
@@ -56,25 +59,14 @@ public class SessionHub(LiveFeedbackStore feedbackStore, IServiceScopeFactory sc
                 .OrderByDescending(s => s.StartTime)
                 .FirstOrDefaultAsync(s => s.SessionCode == sessionCode);
 
+            // Replay open (non-dismissed) questions so the queue rebuilds
             if (session is not null)
             {
-                // Replay open (non-dismissed) questions so the queue rebuilds
                 foreach (var q in session.StudentQuestions
                              .Where(q => q.DismissedAt == null)
                              .OrderBy(q => q.CreatedAt))
                 {
                     await Clients.Caller.SendAsync("QuestionReceived", q.Id, q.Text, q.CreatedAt);
-                }
-
-                // Resume fallback: only when there is no live data to show
-                if (agg.RespondentCount == 0 && allowSnapshotFallback)
-                {
-                    var snap = await db.FeedbackSnapshots
-                        .Where(fs => fs.SessionId == session.Id)
-                        .OrderByDescending(fs => fs.Timestamp)
-                        .FirstOrDefaultAsync();
-                    if (snap is not null)
-                        agg = new FeedbackAggregate(snap.PaceCounts, snap.UnderstandingCounts, snap.RespondentCount);
                 }
             }
         }
@@ -129,6 +121,30 @@ public class SessionHub(LiveFeedbackStore feedbackStore, IServiceScopeFactory sc
             .SendAsync("QuestionReceived", question.Id, question.Text, question.CreatedAt);
     }
 
+    // Dismiss every open question for the session at once (used by "Start fresh").
+    public async Task ClearQuestions(string sessionCode)
+    {
+        using (var scope = _scopeFactory.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<UserDbContext>();
+            var session = await db.Sessions
+                .Include(s => s.StudentQuestions)
+                .OrderByDescending(s => s.StartTime)
+                .FirstOrDefaultAsync(s => s.SessionCode == sessionCode);
+            if (session is null) return;
+
+            var open = session.StudentQuestions.Where(q => q.DismissedAt == null).ToList();
+            if (open.Count == 0) return;
+
+            foreach (var q in open)
+                q.DismissedAt = DateTime.Now;
+            await db.SaveChangesAsync();
+
+            foreach (var q in open)
+                await Clients.Group($"teacher-{sessionCode}").SendAsync("QuestionDismissed", q.Id);
+        }
+    }
+
     public async Task DismissQuestion(string sessionCode, int questionId)
     {
         using (var scope = _scopeFactory.CreateScope())
@@ -144,12 +160,75 @@ public class SessionHub(LiveFeedbackStore feedbackStore, IServiceScopeFactory sc
         await Clients.Group($"teacher-{sessionCode}").SendAsync("QuestionDismissed", questionId);
     }
 
+    // A connection must belong to at most one session at a time. Switching sessions
+    // (e.g. a teacher opening another session) has to drop the old group memberships,
+    // otherwise broadcasts from the old session leak into the new view.
+    private async Task LeaveOtherSessionsAsync(string connectionId, string keepSessionCode)
+    {
+        List<string> teacherCodes;
+        lock (_teacherConnections)
+        {
+            teacherCodes = _teacherConnections
+                .Where(kv => kv.Key != keepSessionCode && kv.Value.Contains(connectionId))
+                .Select(kv => kv.Key).ToList();
+        }
+
+        List<string> studentCodes;
+        lock (_studentConnections)
+        {
+            studentCodes = _studentConnections
+                .Where(kv => kv.Key != keepSessionCode && kv.Value.Contains(connectionId))
+                .Select(kv => kv.Key).ToList();
+        }
+
+        foreach (var code in teacherCodes)
+        {
+            await Groups.RemoveFromGroupAsync(connectionId, $"teacher-{code}");
+            await Groups.RemoveFromGroupAsync(connectionId, code);
+            lock (_teacherConnections)
+            {
+                if (_teacherConnections.TryGetValue(code, out var set))
+                {
+                    set.Remove(connectionId);
+                    if (set.Count == 0) _teacherConnections.Remove(code);
+                }
+            }
+        }
+
+        foreach (var code in studentCodes)
+        {
+            await Groups.RemoveFromGroupAsync(connectionId, $"student-{code}");
+            await Groups.RemoveFromGroupAsync(connectionId, code);
+            _feedbackStore.Remove(code, connectionId);
+
+            int remaining;
+            lock (_studentConnections)
+            {
+                if (_studentConnections.TryGetValue(code, out var set))
+                {
+                    set.Remove(connectionId);
+                    remaining = set.Count;
+                    if (set.Count == 0) _studentConnections.Remove(code);
+                }
+                else remaining = 0;
+            }
+
+            // Tell the old session's teacher the student left and refresh its aggregate.
+            await Clients.Group($"teacher-{code}").SendAsync("StudentCountChanged", remaining);
+            var agg = _feedbackStore.GetAggregate(code);
+            await Clients.Group($"teacher-{code}").SendAsync("FeedbackUpdated",
+                agg.PaceCounts, agg.UnderstandingCounts, agg.RespondentCount);
+        }
+    }
+
     public async Task RegisterAsTeacher(string sessionCode)
     {
         var connectionId = Context.ConnectionId;
 
         try
         {
+            await LeaveOtherSessionsAsync(connectionId, sessionCode);
+
             // Add this connection to the teachers group for this session
             await Groups.AddToGroupAsync(connectionId, $"teacher-{sessionCode}");
 
@@ -182,6 +261,8 @@ public class SessionHub(LiveFeedbackStore feedbackStore, IServiceScopeFactory sc
 
         try
         {
+            await LeaveOtherSessionsAsync(connectionId, sessionCode);
+
             await Groups.AddToGroupAsync(connectionId, $"student-{sessionCode}");
             await Groups.AddToGroupAsync(connectionId, sessionCode);
 
@@ -327,10 +408,22 @@ public class SessionHub(LiveFeedbackStore feedbackStore, IServiceScopeFactory sc
             }
         }
 
-        // If this was the last teacher for a session, notify students
+        // If this was the last teacher for a session, notify students — but only after a
+        // grace window. A teacher reload drops the connection then re-registers within a
+        // second or two; without the delay students get wrongly kicked with "Session ended".
         if (teacherSession != null && !_teacherConnections.ContainsKey(teacherSession))
         {
-            await Clients.Group(teacherSession).SendAsync("TeacherDisconnected");
+            var sessionKey = teacherSession;
+            var hub = _hubContext;
+            _ = Task.Run(async () =>
+            {
+                await Task.Delay(TeacherDisconnectGrace);
+                bool stillGone;
+                lock (_teacherConnections)
+                    stillGone = !_teacherConnections.ContainsKey(sessionKey);
+                if (stillGone)
+                    await hub.Clients.Group(sessionKey).SendAsync("TeacherDisconnected");
+            });
         }
 
         string? studentSession = null;
