@@ -7,36 +7,45 @@
         <span class="overlay-title">Live Feedback</span>
     </HeaderContent>
     <ChildContent>
-        <div class="slider-row">
-            <span class="emoji">🐢</span>
-            <MudSlider T="int" Min="1" Max="5" Step="1" Value="_pace" ValueChanged="OnPaceChanged" Immediate="true"
-                       TickMarks="true" Color="Color.Primary" Class="fb-slider"/>
-            <span class="emoji">🚀</span>
-        </div>
-        <div class="slider-row">
-            <span class="emoji">😞</span>
-            <MudSlider T="int" Min="1" Max="5" Step="1" Value="_understanding" ValueChanged="OnUnderstandingChanged"
-                       Immediate="true" TickMarks="true" Color="Color.Primary" Class="fb-slider"/>
-            <span class="emoji">🤯</span>
-        </div>
-
-        <button class="ask-btn @(_askOpen ? "active" : "")" @onclick="ToggleAsk">⁉️</button>
-
-        @if (_askOpen)
-        {
-            <div class="ask-box">
-                <textarea @bind="_questionText" placeholder="Ask an anonymous question..."></textarea>
-                <div class="ask-actions">
-                    <button class="submitBtn" @onclick="SendQuestion">Send</button>
-                    <button class="cancelBtn" @onclick="CancelAsk">Cancel</button>
-                </div>
+        <div class="fb-bar">
+            <div class="axis-label">Pace</div>
+            <div class="slider-row">
+                <span class="emoji">🐢</span>
+                <MudSlider T="int" Min="1" Max="5" Step="1" Value="_pace" ValueChanged="OnPaceChanged" Immediate="true"
+                           TickMarks="true" Color="Color.Primary" Class="fb-slider"/>
+                <span class="emoji">🚀</span>
             </div>
-        }
+        </div>
+        <div class="fb-bar">
+            <div class="axis-label">Understanding</div>
+            <div class="slider-row">
+                <span class="emoji">😞</span>
+                <MudSlider T="int" Min="1" Max="5" Step="1" Value="_understanding" ValueChanged="OnUnderstandingChanged"
+                           Immediate="true" TickMarks="true" Color="Color.Primary" Class="fb-slider"/>
+                <span class="emoji">🤯</span>
+            </div>
+        </div>
 
-        @if (_sent)
-        {
-            <p class="ask-sent">Question sent!</p>
-        }
+        <div class="ask-section">
+            <div class="ask-row">
+                <button class="ask-btn @(_askOpen ? "active" : "")" @onclick="ToggleAsk" title="Ask a question">⁉️</button>
+                @if (_sent)
+                {
+                    <span class="ask-sent">Question sent!</span>
+                }
+            </div>
+
+            @if (_askOpen)
+            {
+                <div class="ask-box">
+                    <textarea @bind="_questionText" placeholder="Ask an anonymous question..."></textarea>
+                    <div class="ask-actions">
+                        <button class="submitBtn" @onclick="SendQuestion">Send</button>
+                        <button class="cancelBtn" @onclick="CancelAsk">Cancel</button>
+                    </div>
+                </div>
+            }
+        </div>
     </ChildContent>
 </DraggablePanel>
 
@@ -48,6 +57,7 @@
     private bool _askOpen;
     private bool _sent;
     private string _questionText = string.Empty;
+    private CancellationTokenSource? _sentCts;
 
     protected override void OnInitialized()
     {
@@ -86,6 +96,23 @@
         _questionText = string.Empty;
         _askOpen = false;
         _sent = true;
+
+        _sentCts?.Cancel();
+        _sentCts = new CancellationTokenSource();
+        var token = _sentCts.Token;
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(3000, token);
+                await InvokeAsync(() =>
+                {
+                    _sent = false;
+                    StateHasChanged();
+                });
+            }
+            catch (TaskCanceledException) { }
+        });
     }
 
     private void HandleReset()
@@ -98,5 +125,10 @@
         });
     }
 
-    public void Dispose() => Live.OnFeedbackReset -= HandleReset;
+    public void Dispose()
+    {
+        Live.OnFeedbackReset -= HandleReset;
+        _sentCts?.Cancel();
+        _sentCts?.Dispose();
+    }
 }
