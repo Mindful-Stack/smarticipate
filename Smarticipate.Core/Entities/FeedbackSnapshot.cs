@@ -12,5 +12,5 @@ public class FeedbackSnapshot
     public int[] UnderstandingCounts { get; set; } = new int[5];
 
     public int SessionId { get; set; }
-    public Session Session { get; set; }
+    public Session Session { get; set; } = null!;
 }
