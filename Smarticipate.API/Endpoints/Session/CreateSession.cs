@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Http.HttpResults;
+﻿using System.Security.Claims;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
@@ -13,9 +14,11 @@ public class CreateSession : IEndpoint
     public static void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapPost("api/sessions", Handle)
+            .RequireAuthorization()
             .WithTags("Sessions")
             .WithName("Create Session")
             .Accepts<Request>("application/json")
+            .Produces(StatusCodes.Status401Unauthorized)
             .Produces<Response>(StatusCodes.Status201Created);
     }
 
@@ -31,15 +34,21 @@ public class CreateSession : IEndpoint
         int Id
     );
 
-    private static async Task<Created<Response>> Handle(
+    // Return type widens to IResult so we can return Unauthorized as well as Created.
+    private static async Task<IResult> Handle(
         Request request,
+        ClaimsPrincipal user,
         [FromServices] UserDbContext db,
         [FromServices] LiveFeedbackStore feedbackStore,
         [FromServices] IHubContext<SessionHub> hub)
     {
+        var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+            return Results.Unauthorized();
+
         // Enforce one active session per teacher: close any currently-open ones first so GetActive (orders by StartTime desc) is unambiguous
         var openSessions = await db.Sessions
-            .Where(s => s.UserId == request.UserId && s.EndTime == null)
+            .Where(s => s.UserId == userId && s.EndTime == null)
             .ToListAsync();
         foreach (var s in openSessions)
         {
@@ -52,7 +61,7 @@ public class CreateSession : IEndpoint
             Name = request.Name,
             StartTime = request.StartTime,
             EndTime = request.EndTime,
-            UserId = request.UserId
+            UserId = userId    // authenticated caller, NOT the body
         };
 
         db.Sessions.Add(newSession);
@@ -65,7 +74,6 @@ public class CreateSession : IEndpoint
             await LiveSessionTerminator.EndAsync(db, feedbackStore, hub, s.SessionCode);
         }
 
-        var response = new Response(newSession.Id);
-        return TypedResults.Created($"api/sessions/{response.Id}", response);
+        return TypedResults.Created($"api/sessions/{newSession.Id}", new Response(newSession.Id));
     }
 }
