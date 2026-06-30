@@ -37,6 +37,10 @@ public class SessionHub(
 
     public async Task EndSession(string sessionCode)
     {
+        // Drop any in-flight question so it can't replay into a later run with the same code.
+        lock (_activeQuestions)
+            _activeQuestions.Remove(sessionCode);
+
         // Final snapshot + clear live state + dismiss open questions + notify everyone.
         using var scope = _scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<UserDbContext>();
