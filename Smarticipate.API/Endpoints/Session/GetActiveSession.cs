@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using System.Security.Claims;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Smarticipate.API.Data.Identity;
 using Smarticipate.Core;
@@ -10,15 +11,19 @@ public class GetActiveSession : IEndpoint
     public static void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapGet("api/sessions/active/{userId}", Handle)
+            .RequireAuthorization()
             .WithTags("Sessions")
             .WithName("Get Active Session")
             .Produces<ActiveSessionResponse>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
             .Produces(StatusCodes.Status404NotFound);
     }
 
     public record ActiveSessionResponse(
         int Id,
         string SessionCode,
+        string? Name,
         DateTime? StartTime,
         string UserId,
         bool IsActive,
@@ -41,9 +46,14 @@ public class GetActiveSession : IEndpoint
     );
 
     private static async Task<IResult> Handle(
-        string userId, 
+        string userId,
+        ClaimsPrincipal user,
         [FromServices] UserDbContext db)
     {
+        var callerId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(callerId)) return Results.Unauthorized();
+        if (callerId != userId) return Results.Forbid();
+
         var session = await db.Sessions
             .Include(s => s.Questions)
             .ThenInclude(q => q.Responses)
@@ -59,6 +69,7 @@ public class GetActiveSession : IEndpoint
         var response = new ActiveSessionResponse(
             session.Id,
             session.SessionCode,
+            session.Name,
             session.StartTime,
             session.UserId,
             true,
