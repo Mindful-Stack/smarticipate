@@ -56,7 +56,6 @@ builder.Services.AddAuthorization();
 // Configure JSON options globally => avoid Cycles in Db objects
 builder.Services.Configure<JsonOptions>(options =>
 {
-    options.SerializerOptions.ReferenceHandler = ReferenceHandler.Preserve;
     options.SerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
 });
 
