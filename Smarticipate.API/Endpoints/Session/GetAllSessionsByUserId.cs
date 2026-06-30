@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using System.Security.Claims;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Smarticipate.API.Data.Identity;
@@ -11,9 +12,12 @@ public class GetAllSessionsByUserId : IEndpoint
     public static void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapGet("api/sessions/{userId}", Handle)
+            .RequireAuthorization()
             .WithTags("Sessions")
             .WithName("Get Sessions by User")
             .Produces<List<SessionResponse>>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
             .Produces(StatusCodes.Status404NotFound);
     }
 
@@ -45,8 +49,13 @@ public class GetAllSessionsByUserId : IEndpoint
 
     private static async Task<IResult> Handle(
         string userId,
+        ClaimsPrincipal user,
         [FromServices] UserDbContext db)
     {
+        var callerId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(callerId)) return Results.Unauthorized();
+        if (callerId != userId) return Results.Forbid();
+
         var sessions = await db.Sessions
             .Include(s => s.Questions)
             .ThenInclude(q => q.Responses)
