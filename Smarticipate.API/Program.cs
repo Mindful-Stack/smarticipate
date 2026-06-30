@@ -79,10 +79,16 @@ builder.Services.AddOpenApi(options =>
 //Configure CORS
 builder.Services.AddCors(options =>
 {
+    // Allowed Web origins come from config ("Cors:AllowedOrigins"); falls back to the
+    // local dev Web origin so nothing changes locally.
+    // TODO: set "Cors:AllowedOrigins" in production config (appsettings/env) before deploy —
+    // the hardcoded fallback below is local-dev only.
+    var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+                         ?? new[] { "https://localhost:7045" };
     options.AddDefaultPolicy(
-        builder =>
+        policy =>
         {
-            builder.WithOrigins("https://localhost:7045") // Adjust the origin as needed
+            policy.WithOrigins(allowedOrigins)
                 .AllowAnyHeader()
                 .AllowAnyMethod()
                 .AllowCredentials();
