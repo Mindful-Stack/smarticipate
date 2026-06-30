@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.SignalR;
+﻿using System.Security.Claims;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Smarticipate.API.Data.Identity;
 using Smarticipate.API.Services;
@@ -25,6 +26,31 @@ public class SessionHub(
     private readonly IServiceScopeFactory _scopeFactory = scopeFactory;
     private readonly IHubContext<SessionHub> _hubContext = hubContext;
 
+    private string? CurrentUserId => Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+    // Authenticated owner of this session?
+    private async Task<bool> OwnsSessionAsync(string sessionCode)
+    {
+        var userId = CurrentUserId;
+        if (string.IsNullOrEmpty(userId)) return false;
+        using var scope = _scopeFactory.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<UserDbContext>();
+        return await db.Sessions.AnyAsync(s => s.SessionCode == sessionCode && s.UserId == userId);
+    }
+
+    private async Task EnsureOwnerAsync(string sessionCode)
+    {
+        if (!await OwnsSessionAsync(sessionCode))
+            throw new HubException("Not authorized for this session.");
+    }
+
+    // Drop any in-flight question for a session so it cannot replay into a later run with the same code. Static so server-side termination (LiveSessionTerminator) can reach the in-memory state.
+    public static void DropActiveQuestion(string sessionCode)
+    {
+        lock (_activeQuestions)
+            _activeQuestions.Remove(sessionCode);
+    }
+
     public async Task JoinSession(string sessionCode)
     {
         await Groups.AddToGroupAsync(Context.ConnectionId, sessionCode);
@@ -37,6 +63,8 @@ public class SessionHub(
 
     public async Task EndSession(string sessionCode)
     {
+        await EnsureOwnerAsync(sessionCode);
+
         // Drop any in-flight question so it can't replay into a later run with the same code.
         lock (_activeQuestions)
             _activeQuestions.Remove(sessionCode);
@@ -52,6 +80,8 @@ public class SessionHub(
     // empty session reads as 0 regardless of how it was (re)started.
     public async Task RequestTeacherState(string sessionCode)
     {
+        await EnsureOwnerAsync(sessionCode);
+
         var agg = _feedbackStore.GetAggregate(sessionCode);
 
         using (var scope = _scopeFactory.CreateScope())
@@ -91,6 +121,8 @@ public class SessionHub(
     // Teacher reset: keep everyone counted but snap them all back to neutral.
     public async Task ResetFeedback(string sessionCode)
     {
+        await EnsureOwnerAsync(sessionCode);
+
         _feedbackStore.ResetToNeutral(sessionCode);
 
         // tells students to snap their overlays back to neutral
@@ -128,6 +160,8 @@ public class SessionHub(
     // Dismiss every open question for the session at once (used by "Start fresh").
     public async Task ClearQuestions(string sessionCode)
     {
+        await EnsureOwnerAsync(sessionCode);
+
         using (var scope = _scopeFactory.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<UserDbContext>();
@@ -151,6 +185,8 @@ public class SessionHub(
 
     public async Task DismissQuestion(string sessionCode, int questionId)
     {
+        await EnsureOwnerAsync(sessionCode);
+
         using (var scope = _scopeFactory.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<UserDbContext>();
@@ -227,6 +263,8 @@ public class SessionHub(
 
     public async Task RegisterAsTeacher(string sessionCode)
     {
+        await EnsureOwnerAsync(sessionCode);
+
         var connectionId = Context.ConnectionId;
 
         try
@@ -336,6 +374,8 @@ public class SessionHub(
 
     public async Task StartQuestion(string sessionCode, int questionId, int duration)
     {
+        await EnsureOwnerAsync(sessionCode);
+
         lock (_activeQuestions)
         {
             _activeQuestions[sessionCode] = (questionId, duration, DateTime.Now);
@@ -346,6 +386,8 @@ public class SessionHub(
 
     public async Task StopQuestion(string sessionCode)
     {
+        await EnsureOwnerAsync(sessionCode);
+
         lock (_activeQuestions)
         {
             _activeQuestions.Remove(sessionCode);
@@ -373,6 +415,8 @@ public class SessionHub(
 
     public async Task UpdateRemainingTime(string sessionCode, int remainingTime)
     {
+        await EnsureOwnerAsync(sessionCode);
+
         await Clients.Group(sessionCode).SendAsync("TimerUpdated", remainingTime);
     }
 
