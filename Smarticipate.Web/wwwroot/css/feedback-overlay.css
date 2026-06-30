@@ -1,7 +1,7 @@
 /* ########################## Draggable panel ########################## */
 .draggable-panel {
     position: fixed;
-    z-index: 1000;
+    z-index: 10000;
     width: 300px;
     background: var(--beige);
     border: 2px solid var(--dark);

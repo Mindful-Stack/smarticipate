@@ -14,32 +14,39 @@
     private ElementReference _panel;
     private ElementReference _handle;
     private IJSObjectReference? _module;
+    private IJSObjectReference? _instance;
 
     [Parameter] public RenderFragment? HeaderContent { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public string? Class { get; set; }
     [Parameter] public string? Style { get; set; }
 
+    // Stable key for persisting panel's position in localStorage. Null = don't persist.
+    [Parameter] public string? StorageKey { get; set; }
+    
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
             _module = await JS.InvokeAsync<IJSObjectReference>("import", "./js/draggable.js");
-            await _module.InvokeVoidAsync("makeDraggable", _handle, _panel);
+            _instance = await _module.InvokeAsync<IJSObjectReference>("makeDraggable", _handle, _panel, StorageKey);
         }
     }
 
     public async ValueTask DisposeAsync()
     {
-        if (_module is not null)
+        try
         {
-            try
+            if (_instance is not null)
             {
+                await _instance.InvokeVoidAsync("dispose");
+                await _instance.DisposeAsync();
+            }
+            if (_module is not null)
                 await _module.DisposeAsync();
-            }
-            catch
-            {
-            }
+        }
+        catch
+        {
         }
     }
 }
