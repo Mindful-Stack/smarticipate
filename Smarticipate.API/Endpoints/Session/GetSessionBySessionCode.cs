@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using System.Security.Claims;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Smarticipate.API.Data.Identity;
 using Smarticipate.Core;
@@ -10,9 +11,11 @@ public class GetSessionBySessionCode : IEndpoint
     public static void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapGet("api/sessions/code/{sessionCode}", Handle)
+            .RequireAuthorization()
             .WithTags("Sessions")
             .WithName("Get Session by Session Code")
             .Produces<SessionResponse>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status401Unauthorized)
             .Produces(StatusCodes.Status404NotFound);
     }
 
@@ -44,15 +47,19 @@ public class GetSessionBySessionCode : IEndpoint
 
     private static async Task<IResult> Handle(
         string sessionCode,
+        ClaimsPrincipal user,
         [FromServices] UserDbContext db
     )
     {
+        var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId)) return Results.Unauthorized();
+
         var session = await db.Sessions
             .Include(s => s.Questions)
             .ThenInclude(q => q.Responses)
             .FirstOrDefaultAsync(s => s.SessionCode == sessionCode);
 
-        if (session is null)
+        if (session is null || session.UserId != userId)
         {
             return Results.NotFound();
         }
