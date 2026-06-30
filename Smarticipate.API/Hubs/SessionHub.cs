@@ -248,10 +248,6 @@ public class SessionHub(
             }
 
             await Groups.AddToGroupAsync(connectionId, sessionCode);
-            Console.WriteLine($"Added {connectionId} to {sessionCode} general group");
-
-            // Send a test message to verify the connection
-            await Clients.Caller.SendAsync("Debug", "Teacher registration successful");
         }
         catch (Exception ex)
         {
@@ -280,12 +276,9 @@ public class SessionHub(
 
                 _studentConnections[sessionCode].Add(connectionId);
                 studentCount = _studentConnections[sessionCode].Count;
-                Console.WriteLine(
-                    $"Student IDs in session {sessionCode}: {string.Join(", ", _studentConnections[sessionCode])}");
             }
 
             await Clients.Group($"teacher-{sessionCode}").SendAsync("StudentCountChanged", studentCount);
-            Console.WriteLine($"Sent StudentCountChanged({studentCount}) to teacher-{sessionCode}");
 
             // Count this student immediately at neutral; they edit their value by moving a slider.
             _feedbackStore.Seed(sessionCode, connectionId);
@@ -383,10 +376,9 @@ public class SessionHub(
         await Clients.Group(sessionCode).SendAsync("TimerUpdated", remainingTime);
     }
 
-    public async Task SendHeartbeat()
-    {
-        await Clients.Caller.SendAsync("Debug", "Heartbeat received");
-    }
+    // Keepalive no-op: the client invokes it periodically to keep the connection's
+    // traffic alive; nothing needs to be sent back.
+    public Task SendHeartbeat() => Task.CompletedTask;
 
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
@@ -457,8 +449,6 @@ public class SessionHub(
         {
             await Clients.Group($"teacher-{studentSession}").SendAsync("StudentCountChanged", studentCount);
         }
-
-        Console.WriteLine($"Student left session {studentSession}, new count: {studentCount}");
 
         // Remove this connection's live feedback and rebroadcast the aggregate.
         var feedbackSession = _feedbackStore.RemoveConnectionEverywhere(Context.ConnectionId);
