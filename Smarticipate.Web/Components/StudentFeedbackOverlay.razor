@@ -19,7 +19,7 @@
         <div class="fb-bar">
             <div class="axis-label">Understanding</div>
             <div class="slider-row">
-                <span class="emoji">😞</span>
+                <span class="emoji">🥱</span>
                 <MudSlider T="int" Min="1" Max="5" Step="1" Value="_understanding" ValueChanged="OnUnderstandingChanged"
                            Immediate="true" TickMarks="true" Color="Color.Primary" Class="fb-slider"/>
                 <span class="emoji">🤯</span>
@@ -63,6 +63,15 @@
     {
         Live.OnFeedbackReset -= HandleReset;
         Live.OnFeedbackReset += HandleReset;
+        Live.OnReconnected -= HandleReconnected;
+        Live.OnReconnected += HandleReconnected;
+    }
+
+    // The hub re-seeds this student at neutral on reconnect; push our actual slider values
+    // back so the teacher's aggregate matches what the student still sees.
+    private async Task HandleReconnected()
+    {
+        await Live.UpdateFeedback(SessionCode, _pace, _understanding);
     }
 
     private async Task OnPaceChanged(int value)
@@ -128,6 +137,7 @@
     public void Dispose()
     {
         Live.OnFeedbackReset -= HandleReset;
+        Live.OnReconnected -= HandleReconnected;
         _sentCts?.Cancel();
         _sentCts?.Dispose();
     }
