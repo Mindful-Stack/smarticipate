@@ -80,7 +80,7 @@
 
 .sessionRow {
     display: grid;
-    grid-template-columns: 1fr auto auto;
+    grid-template-columns: 1fr auto auto auto;
     align-items: center;
     gap: 1rem;
     padding: 1rem 1.25rem;
@@ -174,3 +174,108 @@
         color: var(--beige);
     }
 }
+
+/* ########### ROW TOOLS (edit / delete) ########### */
+.sessionTools {
+    display: flex;
+    align-items: center;
+    gap: .35rem;
+    justify-content: flex-end;
+}
+
+.iconBtn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    color: var(--dark);
+    background-color: transparent;
+    border: 2px solid transparent;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: all .15s ease-in-out;
+}
+
+.iconBtn:hover {
+    border-color: var(--dark);
+    background-color: var(--beige);
+}
+
+.iconBtn.save:hover { color: var(--teal); border-color: var(--teal); }
+.iconBtn.delete:hover { color: var(--red); border-color: var(--red); }
+
+.renameInput {
+    width: 100%;
+    max-width: 22rem;
+    font-family: var(--inter);
+    font-size: 1.05rem;
+    color: var(--dark);
+    background-color: var(--beige);
+    border: 2px solid var(--dark);
+    border-radius: var(--border-radius);
+    padding: .25rem .5rem;
+    outline: none;
+}
+
+.renameInput:focus { border-color: var(--red); }
+
+/* ########### DELETE CONFIRMATION (feedback-overlay styling) ########### */
+.confirmBackdrop {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(57, 53, 82, .45);
+    z-index: 2000;
+}
+
+.confirmCard {
+    width: min(420px, calc(100vw - 2rem));
+    color: var(--dark);
+    background-color: var(--beige);
+    border: 2px solid var(--dark);
+    border-radius: var(--border-radius);
+    box-shadow: 6px 6px 0 var(--dark);
+    overflow: hidden;
+}
+
+.confirmHeader {
+    padding: .6rem .9rem;
+    background-color: var(--teal);
+    color: var(--beige);
+    border-bottom: 2px solid var(--dark);
+    font-family: var(--ekwarg);
+    font-size: 1.15rem;
+    font-weight: bold;
+}
+
+.confirmBody {
+    padding: 1rem 1.1rem 1.1rem;
+    font-family: var(--inter);
+}
+
+.confirmBody p { margin: 0 0 1rem; line-height: 1.4; }
+
+.confirmActions {
+    display: flex;
+    justify-content: flex-end;
+    gap: .6rem;
+}
+
+.deleteBtn {
+    padding: var(--padding-box);
+    font-family: var(--inter);
+    font-size: 1rem;
+    font-weight: bold;
+    color: var(--beige);
+    background-color: var(--red);
+    border: 2px solid var(--dark);
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: all .2s ease-in-out;
+}
+
+.deleteBtn:hover { background-color: var(--dark); }

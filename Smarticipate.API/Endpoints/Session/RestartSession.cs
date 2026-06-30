@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
@@ -12,23 +13,29 @@ public class RestartSession : IEndpoint
     public static void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapPut("api/sessions/{sessionCode}/restart", Handle)
+            .RequireAuthorization()
             .WithTags("Sessions")
             .WithName("Restart Session")
             .Produces(StatusCodes.Status204NoContent)
+            .Produces(StatusCodes.Status401Unauthorized)
             .Produces(StatusCodes.Status404NotFound);
     }
 
     private static async Task<IResult> Handle(
         string sessionCode,
+        ClaimsPrincipal user,
         [FromServices] UserDbContext db,
         [FromServices] LiveFeedbackStore feedbackStore,
         [FromServices] IHubContext<SessionHub> hub)
     {
+        var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId)) return Results.Unauthorized();
+
         var session = await db.Sessions
             .OrderByDescending(s => s.StartTime)
             .FirstOrDefaultAsync(s => s.SessionCode == sessionCode);
 
-        if (session is null) return Results.NotFound();
+        if (session is null || session.UserId != userId) return Results.NotFound();
 
         // Enforce one active session per teacher: close any currently-open ones first. Without this, GetActiveSession (orders by StartTime desc) could load the wrong one.
         var others = await db.Sessions

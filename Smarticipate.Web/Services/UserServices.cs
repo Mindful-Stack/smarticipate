@@ -1,38 +1,23 @@
-﻿using System.Net.Http.Json;
-using System.Security.Claims;
-using Microsoft.AspNetCore.Components.Authorization;
+using System.Net.Http.Json;
 
 namespace Smarticipate.Web.Services;
 
-public class UserServices (IHttpClientFactory httpClientFactory, AuthenticationStateProvider authStateProvider) : IService
+public class UserServices(IHttpClientFactory httpClientFactory) : IService
 {
-    public async Task<string> GetAuthenticatedUser()
+    public async Task<string?> GetAuthenticatedUser()
     {
-        var authState = await authStateProvider.GetAuthenticationStateAsync();
-        var user = authState.User;
-        var userEmail = user.FindFirst(ClaimTypes.Email)?.Value;
-
-        var client = httpClientFactory.CreateClient("API");
-        string? userId = null;
-        if (!string.IsNullOrEmpty(userEmail))
+        try
         {
-
-            try
-            {
-                var userResponse = await client.GetAsync($"api/users/{Uri.EscapeDataString(userEmail)}");
-                if (userResponse.IsSuccessStatusCode)
-                {
-                    userId = await userResponse.Content.ReadFromJsonAsync<string>();
-                    return userId;
-                }
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e);
-                return null;
-            }
-            
+            var client = httpClientFactory.CreateClient("API");
+            var response = await client.GetAsync("api/users/me");
+            return response.IsSuccessStatusCode
+                ? await response.Content.ReadFromJsonAsync<string>()
+                : null;
         }
-        return null;
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            return null;
+        }
     }
 }

@@ -29,27 +29,84 @@
                     @foreach (var s in _sessions)
                     {
                         <li class="sessionRow" @key="s.Id">
-                            <span class="sessionName">
-                                @(string.IsNullOrWhiteSpace(s.Name) ? s.SessionCode : s.Name)
-                                @if (!string.IsNullOrWhiteSpace(s.Name))
-                                {
-                                    <span class="sessionCode">@s.SessionCode</span>
-                                }
+                            @if (_editingId == s.Id)
+                            {
+                                <span class="sessionName">
+                                    <input class="renameInput" @bind="_editName" @bind:event="oninput"
+                                           @onkeydown="@(e => OnRenameKey(e, s))" placeholder="Session name" />
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="sessionName">
+                                    @(string.IsNullOrWhiteSpace(s.Name) ? s.SessionCode : s.Name)
+                                    @if (!string.IsNullOrWhiteSpace(s.Name))
+                                    {
+                                        <span class="sessionCode">@s.SessionCode</span>
+                                    }
+                                    @if (s.IsActive)
+                                    {
+                                        <span class="liveBadge"><span class="liveDot"></span>Live</span>
+                                    }
+                                </span>
+                            }
+
+                            <span class="sessionMeta">@s.StartTime?.ToString("g")</span>
+
+                            <span class="sessionActions">
                                 @if (s.IsActive)
                                 {
-                                    <span class="liveBadge"><span class="liveDot"></span>Live</span>
+                                    <button class="stopSessionBtn" aria-label="Stop session" @onclick="() => StopSession(s)">
+                                        <MudIcon Icon="@Icons.Material.Outlined.StopCircle" Size="Size.Small"/>
+                                        Stop
+                                    </button>
                                 }
-                            </span>
-                            <span class="sessionMeta">@s.StartTime?.ToString("g")</span>
-                            <span class="sessionActions">
                                 <button class="submitBtn" disabled="@(!s.IsActive)"
                                         title="@(s.IsActive ? null : "Only a live session can be resumed")"
                                         @onclick="() => Restart(s.SessionCode, resume: true)">Resume</button>
                                 <button class="cancelBtn" @onclick="() => Restart(s.SessionCode, resume: false)">Start fresh</button>
                             </span>
+
+                            <span class="sessionTools">
+                                @if (_editingId == s.Id)
+                                {
+                                    <button class="iconBtn save" title="Save name" @onclick="() => SaveName(s)">
+                                        <MudIcon Icon="@Icons.Material.Outlined.Save" Size="Size.Medium" />
+                                    </button>
+                                }
+                                else
+                                {
+                                    <button class="iconBtn" title="Edit name" @onclick="() => BeginEdit(s)">
+                                        <MudIcon Icon="@Icons.Material.Outlined.Edit" Size="Size.Medium" />
+                                    </button>
+                                }
+                                <button class="iconBtn delete" title="Delete session" @onclick="() => AskDelete(s)">
+                                    <MudIcon Icon="@Icons.Material.Outlined.DeleteOutline" Size="Size.Medium" />
+                                </button>
+                            </span>
                         </li>
                     }
                 </ul>
+            }
+
+            @if (_deleteTarget is not null)
+            {
+                <div class="confirmBackdrop" @onclick="CancelDelete">
+                    <div class="confirmCard" @onclick:stopPropagation="true">
+                        <div class="confirmHeader">Delete session</div>
+                        <div class="confirmBody">
+                            <p>
+                                Delete
+                                <strong>@(string.IsNullOrWhiteSpace(_deleteTarget.Name) ? _deleteTarget.SessionCode : _deleteTarget.Name)</strong>?
+                                This permanently removes the session and all its feedback and questions. This can't be undone.
+                            </p>
+                            <div class="confirmActions">
+                                <button class="cancelBtn" @onclick="CancelDelete">Cancel</button>
+                                <button class="deleteBtn" @onclick="ConfirmDelete">Delete</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             }
         </div>
     </Authorized>
@@ -86,7 +143,7 @@
         if (ok)
         {
             // Fresh session, now snapshot to resume
-            Navigation.NavigateTo($"/TeacherSession?code={code}&mode=reset");
+            Navigation.NavigateTo("/TeacherSession?mode=reset");
         }
     }
 
@@ -95,7 +152,58 @@
         var ok = await SessionServices.RestartSessionAsync(code);
         if (ok)
         {
-            Navigation.NavigateTo($"/TeacherSession?code={code}&mode={(resume ? "resume" : "reset")}");
+            Navigation.NavigateTo($"/TeacherSession?mode={(resume ? "resume" : "reset")}");
         }
+    }
+
+    // Stop a live session straight from the dashboard. The endpoint is server-authoritative: it ends the session and releases its live state (connected students are notified, in-memory state cleared), so nothing leaks even though we are not on the session page.
+    private async Task StopSession(SessionServices.SessionResponse s)
+    {
+        var ok = await SessionServices.UpdateSessionAsync(s.SessionCode);
+        if (ok)
+        {
+            s.IsActive = false;
+            s.EndTime = DateTime.Now;
+        }
+    }
+
+    private int? _editingId;
+    private string _editName = string.Empty;
+    private SessionServices.SessionResponse? _deleteTarget;
+
+    private void BeginEdit(SessionServices.SessionResponse s)
+    {
+        _editingId = s.Id;
+        // Pre-fill with whatever the row shows: the name, or the code for a code-only session.
+        _editName = string.IsNullOrWhiteSpace(s.Name) ? s.SessionCode : s.Name;
+    }
+
+    private async Task SaveName(SessionServices.SessionResponse s)
+    {
+        var name = _editName.Trim();
+        var ok = await SessionServices.RenameSessionAsync(s.SessionCode, name);
+        if (ok)
+            s.Name = string.IsNullOrWhiteSpace(name) ? null : name;
+        _editingId = null;
+    }
+
+    private async Task OnRenameKey(KeyboardEventArgs e, SessionServices.SessionResponse s)
+    {
+        if (e.Key == "Enter") await SaveName(s);
+        else if (e.Key == "Escape") _editingId = null;
+    }
+
+    private void AskDelete(SessionServices.SessionResponse s) => _deleteTarget = s;
+    private void CancelDelete() => _deleteTarget = null;
+
+    private async Task ConfirmDelete()
+    {
+        if (_deleteTarget is null) return;
+
+        var ok = await SessionServices.DeleteSessionAsync(_deleteTarget.SessionCode);
+        if (ok)
+            _sessions.RemoveAll(x => x.Id == _deleteTarget.Id);
+
+        _deleteTarget = null;
     }
 }
