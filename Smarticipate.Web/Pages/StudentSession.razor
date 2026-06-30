@@ -14,7 +14,7 @@
         {
             <StudentFeedbackOverlay SessionCode="@_sessionCode"/>
         }
-        
+
         @if (_isLoading)
         {
             <MudProgressCircular Color="Color.Dark" Size="Size.Large"/>
@@ -55,9 +55,6 @@
 
                 </div>
                 <div class="countdown">
-                    @* <MudProgressCircular Class="progressCircle" *@
-                    @*                      Color="@(_countdownTime < 20 ? (_countdownTime < 10 ? Color.Error : Color.Tertiary) : Color.Dark)" *@
-                    @*                      Style="width: 150px; height: 150px;" Value="@_progressPercentage"/> *@
                     <MudProgressCircular Class="progressCircle"
                                          Color="@(_countdownTime < 20 ? (_countdownTime < 10 ? Color.Error : Color.Tertiary) : Color.Dark)"
                                          Style="width: 150px; height: 150px;" Indeterminate="true"/>
@@ -81,7 +78,6 @@
                     <h3>Thank you for your answer!</h3>
                 }
                 <h1>Waiting for next question...</h1>
-                @* <MudProgressCircular Class="waitSpinner" Indeterminate="true" Color="Color.Dark" Style="width: 100px; height: 100px;"/> *@
                 <img class="logo" src="images/smarticipate-logo.png"/>
 
             </div>
@@ -91,7 +87,7 @@
             <div class="sessionEndedContainer">
                 <h1>Session has ended</h1>
                 <h3 class="participation">Thank you for participating!</h3>
-                <button class="submitBtn" onclick="@ResetSession">Join session</button>
+                <button class="submitBtn" @onclick="ResetSession">Join session</button>
             </div>
         }
         else
@@ -101,7 +97,7 @@
                     <div class="formField joinForm">
                         <label class="joinTitle">Enter session code</label>
                         <input type="text" id="inputText" @bind="_sessionCode" @bind:event="oninput"/>
-                        <button class="submitBtn" onclick="@JoinSession">Join</button>
+                        <button class="submitBtn" @onclick="JoinSession">Join</button>
                         @if (!string.IsNullOrEmpty(_errorMessage))
                         {
                             <p class="errorMessage">@_errorMessage</p>
@@ -110,12 +106,6 @@
                 </div>
             </div>
         }
-    </div>
-    <div style="position: fixed; bottom: 40px; right: 10px; font-size: 12px; background-color: #f0f0f0; padding: 5px;">
-        isInSession: @_isInSession |
-        activeQuestionId: @(ActiveQuestionId?.ToString() ?? "null") |
-        hasAnswered: @_hasAnswered |
-        countdownTime: @_countdownTime
     </div>
 </div>
 
@@ -139,7 +129,6 @@
             if (_activeQuestionId != value)
             {
                 _activeQuestionId = value;
-                Console.WriteLine($"ActiveQuestionId changed to {value}");
                 InvokeAsync(StateHasChanged);
             }
         }
@@ -167,7 +156,6 @@
             {
                 _countdownTime = value;
                 _countdownDisplay = TimeSpan.FromSeconds(value).ToString(@"mm\:ss");
-                Console.WriteLine($"CountdownTime changed to {value}, display: {_countdownDisplay}");
                 InvokeAsync(StateHasChanged);
             }
         }
@@ -178,22 +166,10 @@
         _isLoading = true;
         try
         {
-            // Make sure connection is fully established
-            if (!LiveSessionServices.IsConnected)
+            // Register handlers once the hub is actually connected (waits for the connected
+            // state instead of a fixed delay).
+            if (await LiveSessionServices.EnsureConnectedAsync())
             {
-                await LiveSessionServices.InitializeConnection();
-
-                // Add a small delay to ensure connection is fully established
-                await Task.Delay(500);
-            }
-
-            // Debug connection status
-            Console.WriteLine($"Hub connection state: {LiveSessionServices.IsConnected}, Connection ID: {LiveSessionServices._hubConnection?.ConnectionId ?? "unknown"}");
-
-            /// IMPORTANT: Only register handlers if connection is established
-            if (LiveSessionServices.IsConnected)
-            {
-                // Re-register event handlers to ensure they're connected
                 LiveSessionServices.OnQuestionStarted -= HandleQuestionStarted;
                 LiveSessionServices.OnQuestionStarted += HandleQuestionStarted;
 
@@ -209,21 +185,18 @@
                 LiveSessionServices.OnTeacherDisconnected -= HandleTeacherDisconnected;
                 LiveSessionServices.OnTeacherDisconnected += HandleTeacherDisconnected;
 
-
-                Console.WriteLine("Successfully registered all event handlers");
-
                 // A page refresh recreates the whole WASM app, so re-join the session the
                 // student was in (if it's still active) instead of dropping them on the code form.
                 await TryRestoreSessionAsync();
             }
-            else
-            {
-                Console.WriteLine("WARNING: Could not register event handlers - connection not established");
-            }
+
+            // Start the heartbeat regardless of connection state; the callback guards on
+            // (_isInSession && IsConnected), so it only sends once the student is in a session.
+            StartHeartbeatTimer();
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error initializing connection: {ex.Message}");
+            Console.WriteLine($"Error initializing student session: {ex.Message}");
         }
         finally
         {
@@ -233,54 +206,34 @@
 
     private void HandleQuestionStarted(int questionId, int duration, int remainingTime)
     {
-        Console.WriteLine($"*** HANDLING Question started: {questionId}, duration: {duration}, remaining: {remainingTime} ***");
-
         InvokeAsync(async () =>
         {
             ActiveQuestionId = null;
             StateHasChanged();
 
             ActiveQuestionId = questionId;
-            Console.WriteLine($"This is the current session code: {_sessionCode}");
 
             if (!string.IsNullOrEmpty(_sessionCode))
             {
                 var sessionResponse = await SessionServices.GetSessionByCodeAsync(_sessionCode);
                 var question = sessionResponse?.Questions.FirstOrDefault(q => q.Id == questionId);
-
-                if (question is not null)
-                {
-                    CurrentQuestionNumber = question.QuestionNumber;
-                    Console.WriteLine($"current question number: {CurrentQuestionNumber}");
-                }
-                else
-                {
-                    CurrentQuestionNumber = 0;
-                }
+                CurrentQuestionNumber = question?.QuestionNumber ?? 0;
             }
 
             _hasAnswered = false;
             CountdownTime = remainingTime;
-            // _countdownDisplay = TimeSpan.FromSeconds(_countdownTime).ToString(@"mm:ss");
-
-            Console.WriteLine($"Updated state: _isInSession={_isInSession}, _activeQuestionId={ActiveQuestionId}");
-
-            // Force UI update
             StateHasChanged();
         });
     }
 
     private void HandleQuestionStopped()
     {
-        // _activeQuestionId = null;
-        // _countdownDisplay = "00:00;";
-        // StateHasChanged();
         InvokeAsync(() =>
         {
             ActiveQuestionId = null;
             _hasAnswered = false;
             _countdownDisplay = "00:00";
-            StateHasChanged(); // Notify Blazor
+            StateHasChanged();
         });
     }
 
@@ -292,51 +245,35 @@
 
             if (remainingTime <= 0 && ActiveQuestionId.HasValue)
             {
-                Console.WriteLine($"Time's up! {remainingTime}s remaining");
                 ActiveQuestionId = null;
-                StateHasChanged();
             }
 
-            StateHasChanged(); // Notify Blazor
+            StateHasChanged();
         });
     }
 
     private void HandleSessionEnded()
     {
-        // _isInSession = false;
-        // _sessionEnded = true;
-        // _activeQuestionId = null;
-        // StateHasChanged();
         InvokeAsync(async () =>
         {
             _isInSession = false;
             _sessionEnded = true;
             ActiveQuestionId = null;
             await ClearSavedSessionAsync();
-            StateHasChanged(); // Notify Blazor
+            StateHasChanged();
         });
     }
 
     private void HandleTeacherDisconnected()
     {
-        try
+        InvokeAsync(async () =>
         {
-            InvokeAsync(async () =>
-            {
-                Console.WriteLine("StudentSession: Processing teacher disconnection");
-
-                _isInSession = false;
-                _sessionEnded = true;
-                _activeQuestionId = null;
-                await ClearSavedSessionAsync();
-                Console.WriteLine("StudentSession: Updated state, calling StateHasChanged");
-                StateHasChanged();
-            });
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error handling teacher disconnection: {ex.Message}");
-        }
+            _isInSession = false;
+            _sessionEnded = true;
+            _activeQuestionId = null;
+            await ClearSavedSessionAsync();
+            StateHasChanged();
+        });
     }
 
     private async Task JoinSession()
@@ -352,29 +289,19 @@
         try
         {
             var session = await SessionServices.GetSessionByCodeAsync(_sessionCode);
-            Console.WriteLine($"Session: {(session != null ? "Found" : "Not Found")}, Active: {session?.IsActive}");
 
             if (session is not null && session.IsActive)
             {
                 _isLoading = true;
 
+                await LiveSessionServices.JoinSession(_sessionCode);
+                await LiveSessionServices.RegisterAsStudent(_sessionCode);
+
                 if (!LiveSessionServices.IsConnected)
                 {
-                    Console.WriteLine("Failed to establish SignalR connection");
                     _errorMessage = "Connection error. Please try again.";
-                    _isLoading = false;
                     return;
                 }
-
-                // Join session first
-                await LiveSessionServices.JoinSession(_sessionCode);
-                Console.WriteLine("Successfully joined session group");
-
-                // Register as student after a small delay
-                await Task.Delay(500);
-                Console.WriteLine($"About to register as student for session {_sessionCode}...");
-                await LiveSessionServices.RegisterAsStudent(_sessionCode);
-                Console.WriteLine("Student registration call completed");
 
                 _isInSession = true;
                 _sessionEnded = false;
@@ -440,11 +367,9 @@
             {
                 _sessionCode = savedCode;
                 await LiveSessionServices.JoinSession(savedCode);
-                await Task.Delay(500);
                 await LiveSessionServices.RegisterAsStudent(savedCode);
                 _isInSession = true;
                 _sessionEnded = false;
-                Console.WriteLine($"Restored student session {savedCode} after reload");
             }
             else
             {
@@ -506,32 +431,28 @@
             await LiveSessionServices.LeaveSession();
         }
 
-        if (_heartbeatTask is not null)
-        {
-            // We need a better way to cancel the task, but this helps
-            await Task.CompletedTask;
-        }
+        _heartbeatTimer?.Dispose();
+        _heartbeatTimer = null;
     }
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    private Timer? _heartbeatTimer;
+
+    private void StartHeartbeatTimer()
     {
-        if (firstRender)
+        _heartbeatTimer = new Timer(async _ =>
         {
-            // Set up a periodic heartbeat to keep the connection alive
-            _heartbeatTask = Task.Run(async () =>
+            if (_isInSession && LiveSessionServices.IsConnected)
             {
-                while (true)
+                try
                 {
-                    await Task.Delay(15000); // 15 seconds
                     await LiveSessionServices.SendHeartbeat();
                 }
-            });
-        }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Heartbeat error: {ex.Message}");
+                }
+            }
+        }, null, 15000, 15000);
     }
 
-    private Task _heartbeatTask;
-}
-
-@{
-    Console.WriteLine($"Rendering StudentSession: _isInSession={_isInSession}, _activeQuestionId={ActiveQuestionId}");
 }
