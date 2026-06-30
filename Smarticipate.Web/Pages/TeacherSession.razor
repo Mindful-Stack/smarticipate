@@ -12,21 +12,11 @@
     <div class="teacherSessionContent">
         <AuthorizeView>
             <Authorized>
-                @if (_isLoading)
+                @if (_isLoading || !_isInSession)
                 {
                     <div class="inactiveSessionContainer">
                         <img class="logo" src="images/smarticipate-logo.png"/></div>
                     <h2>Checking for active session...</h2>
-                }
-                else if (!_isInSession)
-                {
-                    <div class="inactiveSessionContainer">
-                        <h1>Start a live session</h1>
-                        <button class="submitBtn btnWithIcon" @onclick="StartSession">
-                            <MudIcon Icon="@Icons.Material.Outlined.SmartDisplay" Style="width: 40px;"/>
-                            Start
-                        </button>
-                    </div>
                 }
                 else
                 {
@@ -35,10 +25,17 @@
                             <MudIconButton Class="backIcon" Color="Color.Dark"
                                            Icon="@Icons.Material.Outlined.ArrowBack" Size="Size.Small"
                                            aria-label="Back to dashboard" OnClick="GoToDashboard"/>
-                            <h2 class="activeSessionTitle">Active Session: @_sessionCode </h2>
-                            <MudIconButton Class="stopIcon" Color="Color.Error"
-                                           Icon="@Icons.Material.Outlined.StopCircle" Size="Size.Small"
-                                           aria-label="stop" OnClick="EndSession"/>
+                            <div class="sessionHeading">
+                                <h2 class="activeSessionTitle">@(string.IsNullOrWhiteSpace(_sessionName) ? _sessionCode : _sessionName)</h2>
+                                @if (!string.IsNullOrWhiteSpace(_sessionName))
+                                {
+                                    <span class="activeSessionCode">@_sessionCode</span>
+                                }
+                            </div>
+                            <button class="stopSessionBtn" aria-label="Stop session" @onclick="EndSession">
+                                <MudIcon Icon="@Icons.Material.Outlined.StopCircle" Size="Size.Small"/>
+                                Stop
+                            </button>
                         </div>
                         <div class="timer">
                             <div class="timerSetup">
@@ -95,8 +92,6 @@
 </div>
 
 @code {
-    [Parameter, SupplyParameterFromQuery(Name = "code")]
-    public string? Code { get; set; }
     [Parameter, SupplyParameterFromQuery(Name = "mode")]
     public string? Mode { get; set; }
 
@@ -104,7 +99,7 @@
     private bool _isLoading = true;
     private bool _isInSession;
     private string _sessionCode = string.Empty;
-    private Random _random = new();
+    private string? _sessionName;
 
     //STUDENT COUNT
     private int _studentCount = 0;
@@ -165,25 +160,27 @@
 
         await LoadActiveSession();
 
-        if (!string.IsNullOrEmpty(_sessionCode))
+        // The dashboard is home base: with no active session there is nothing to show here, so send the teacher back instead of rendering a dead screen.
+        if (!_isInSession)
         {
-            await LiveSessionServices.JoinSession(_sessionCode);
-            await LiveSessionServices.RegisterAsTeacher(_sessionCode);
+            Navigation.NavigateTo("/Dashboard");
+            return;
+        }
 
-            // "Start fresh" from the dashboard: zero the feedback AND clear the question
-            // queue. Resume keeps both. (Questions are also cleared whenever a session ends.)
-            if (Mode == "reset")
-            {
-                await LiveSessionServices.ResetFeedback(_sessionCode);
-                await LiveSessionServices.ClearQuestions(_sessionCode);
-            }
+        await LiveSessionServices.JoinSession(_sessionCode);
+        await LiveSessionServices.RegisterAsTeacher(_sessionCode);
 
-            // `mode` is a one-shot entry instruction. Strip it so a page refresh
-            // reloads the bare URL and doesn't re-run this on the live session.
-            if (!string.IsNullOrEmpty(Mode))
-            {
-                Navigation.NavigateTo("/TeacherSession", replace: true);
-            }
+        // "Start fresh" from the dashboard zeroes feedback and clears the queue; resume keeps both.
+        if (Mode == "reset")
+        {
+            await LiveSessionServices.ResetFeedback(_sessionCode);
+            await LiveSessionServices.ClearQuestions(_sessionCode);
+        }
+
+        // `mode` is a one-shot entry instruction; strip it so a refresh does not re-run this.
+        if (!string.IsNullOrEmpty(Mode))
+        {
+            Navigation.NavigateTo("/TeacherSession", replace: true);
         }
 
         await CloseActiveQuestionsAsync();
@@ -202,6 +199,7 @@
                 {
                     _isInSession = true;
                     _sessionCode = activeSession.SessionCode;
+                    _sessionName = activeSession.Name;
 
                     await LiveSessionServices.JoinSession(_sessionCode);
                 }
@@ -218,63 +216,19 @@
         }
     }
 
-    private async Task StartSession()
-    {
-        _isInSession = true;
-        if (_isInSession)
-        {
-            int randomNumber = _random.Next(10000000, 99999999);
-            _sessionCode = randomNumber.ToString();
-
-            try
-            {
-                var userId = await UserServices.GetAuthenticatedUser();
-
-                var request = new SessionServices.SessionRequest(
-                    _sessionCode,
-                    null,
-                    DateTime.Now,
-                    null,
-                    userId
-                );
-
-                var success = await SessionServices.CreateSessionAsync(request);
-                if (success)
-                {
-                    await LiveSessionServices.JoinSession(_sessionCode);
-                    await LiveSessionServices.RegisterAsTeacher(_sessionCode);
-                }
-                else
-                {
-                    _isInSession = false;
-                    _sessionCode = string.Empty;
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Exception when creating session: {ex.Message}");
-                _isInSession = false;
-                _sessionCode = string.Empty;
-            }
-        }
-    }
-
     private async Task EndSession()
     {
         try
         {
             if (!string.IsNullOrEmpty(_sessionCode))
             {
+                // Stop is server-authoritative: the endpoint ends the session AND releases live state (notifies students, clears in-memory state). We just leave the SignalR group here.
                 var success = await SessionServices.UpdateSessionAsync(_sessionCode);
                 if (!success)
                 {
                     Console.WriteLine("Error updating session");
                 }
 
-                //Broadcast session end to connected clients
-                await LiveSessionServices.EndSession();
-
-                //Leave SignalR group
                 await LiveSessionServices.LeaveSession();
             }
         }
