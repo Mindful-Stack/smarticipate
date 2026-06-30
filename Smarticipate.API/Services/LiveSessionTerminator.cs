@@ -18,6 +18,7 @@ public static class LiveSessionTerminator
     {
         await FeedbackSnapshotWriter.WriteAsync(db, store, sessionCode);
         store.Reset(sessionCode);
+        SessionHub.DropActiveQuestion(sessionCode);
 
         // Questions belong to a single run — close them out when the session ends.
         var session = await db.Sessions
