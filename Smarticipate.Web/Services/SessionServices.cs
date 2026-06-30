@@ -128,6 +128,56 @@ public class SessionServices(IHttpClientFactory httpClientFactory) : IService
         }
     }
 
+    public async Task<bool> RenameSessionAsync(string sessionCode, string? name)
+    {
+        try
+        {
+            var client = httpClientFactory.CreateClient("API");
+            var response = await client.PutAsJsonAsync(
+                $"api/sessions/{Uri.EscapeDataString(sessionCode)}/name",
+                new { Name = name });
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Exception when renaming session: {ex.Message}");
+            return false;
+        }
+    }
+
+    public async Task<bool> DeleteSessionAsync(string sessionCode)
+    {
+        try
+        {
+            var client = httpClientFactory.CreateClient("API");
+            var response = await client.DeleteAsync($"api/sessions/{Uri.EscapeDataString(sessionCode)}");
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Exception when deleting session: {ex.Message}");
+            return false;
+        }
+    }
+
+    public async Task<StudentSessionResponse?> GetSessionStatusByCodeAsync(string sessionCode)
+    {
+        try
+        {
+            var client = httpClientFactory.CreateClient("API");
+            var response = await client.GetAsync(
+                $"api/sessions/code/{Uri.EscapeDataString(sessionCode)}/status");
+            return response.IsSuccessStatusCode
+                ? await response.Content.ReadFromJsonAsync<StudentSessionResponse>()
+                : null;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Exception when retrieving session status: {ex.Message}");
+            return null;
+        }
+    }
+
     public record SessionRequest(
         string SessionCode,
         string? Name,
@@ -139,6 +189,7 @@ public class SessionServices(IHttpClientFactory httpClientFactory) : IService
     {
         public int Id { get; set; }
         public string SessionCode { get; set; }
+        public string? Name { get; set; }
         public DateTime? StartTime { get; set; }
         public string UserId { get; set; }
         public bool IsActive { get; set; }
@@ -172,5 +223,20 @@ public class SessionServices(IHttpClientFactory httpClientFactory) : IService
         public ResponseOption SelectedOption { get; set; }
         public DateTime TimeStamp { get; set; }
         public int QuestionId { get; set; }
+    }
+
+    public record StudentSessionResponse
+    {
+        public int Id { get; set; }
+        public string SessionCode { get; set; }
+        public string? Name { get; set; }
+        public bool IsActive { get; set; }
+        public List<StudentQuestionDto> Questions { get; set; } = new();
+    }
+
+    public record StudentQuestionDto
+    {
+        public int Id { get; set; }
+        public int QuestionNumber { get; set; }
     }
 }
