@@ -28,9 +28,23 @@
     gap: .5rem;
 }
 
+.sessionHeading {
+    display: flex;
+    align-items: baseline;
+    gap: .6rem;
+}
+
 .activeSessionTitle {
     text-decoration: underline;
     text-underline-offset: var(--underline-offest);
+}
+
+.activeSessionCode {
+    font-family: var(--inter);
+    font-size: .95rem;
+    font-weight: normal;
+    color: var(--purple);
+    opacity: .9;
 }
 
 

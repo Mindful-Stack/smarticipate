@@ -23,10 +23,17 @@
         {
             <div class="activeSessionContainer">
                 <div class="sessionInfo">
-                    <h2 class="activeSessionTitle">Active Session: @_sessionCode </h2>
-                    <MudIconButton Class="stopIcon" Color="Color.Error"
-                                   Icon="@Icons.Material.Outlined.ExitToApp" Size="Size.Small"
-                                   aria-label="stop" OnClick="LeaveSession"/>
+                    <div class="sessionHeading">
+                        <h2 class="activeSessionTitle">@(string.IsNullOrWhiteSpace(_sessionName) ? _sessionCode : _sessionName)</h2>
+                        @if (!string.IsNullOrWhiteSpace(_sessionName))
+                        {
+                            <span class="activeSessionCode">@_sessionCode</span>
+                        }
+                    </div>
+                    <button class="leaveSessionBtn" aria-label="Leave session" @onclick="LeaveSession">
+                        <MudIcon Icon="@Icons.Material.Outlined.ExitToApp" Size="Size.Small"/>
+                        Leave
+                    </button>
                 </div>
             </div>
             <div class="questionContainer">
@@ -65,12 +72,19 @@
         else if (_isInSession || _hasAnswered)
         {
             <div class="activeSessionContainer">
-                <h2 class="activeSessionTitle">Active Session: @_sessionCode </h2>
-
-                <MudIconButton Class="stopIcon" Color="Color.Error"
-                               Icon="@Icons.Material.Outlined.ExitToApp" Size="Size.Small"
-                               aria-label="stop" OnClick="LeaveSession"/>
-
+                <div class="sessionInfo">
+                    <div class="sessionHeading">
+                        <h2 class="activeSessionTitle">@(string.IsNullOrWhiteSpace(_sessionName) ? _sessionCode : _sessionName)</h2>
+                        @if (!string.IsNullOrWhiteSpace(_sessionName))
+                        {
+                            <span class="activeSessionCode">@_sessionCode</span>
+                        }
+                    </div>
+                    <button class="leaveSessionBtn" aria-label="Leave session" @onclick="LeaveSession">
+                        <MudIcon Icon="@Icons.Material.Outlined.ExitToApp" Size="Size.Small"/>
+                        Leave
+                    </button>
+                </div>
             </div>
             <div class="waitingContainer">
                 @if (_hasAnswered)
@@ -115,6 +129,7 @@
     private bool _sessionEnded = false;
     private bool _hasAnswered = false;
     private string _sessionCode = string.Empty;
+    private string? _sessionName;
     private int? _activeQuestionId;
     private int _currentQuestionNumber;
     private int _countdownTime = 0;
@@ -215,7 +230,7 @@
 
             if (!string.IsNullOrEmpty(_sessionCode))
             {
-                var sessionResponse = await SessionServices.GetSessionByCodeAsync(_sessionCode);
+                var sessionResponse = await SessionServices.GetSessionStatusByCodeAsync(_sessionCode);
                 var question = sessionResponse?.Questions.FirstOrDefault(q => q.Id == questionId);
                 CurrentQuestionNumber = question?.QuestionNumber ?? 0;
             }
@@ -288,7 +303,7 @@
 
         try
         {
-            var session = await SessionServices.GetSessionByCodeAsync(_sessionCode);
+            var session = await SessionServices.GetSessionStatusByCodeAsync(_sessionCode);
 
             if (session is not null && session.IsActive)
             {
@@ -305,6 +320,7 @@
 
                 _isInSession = true;
                 _sessionEnded = false;
+                _sessionName = session.Name;
                 await SaveSessionAsync(_sessionCode);
             }
             else
@@ -343,6 +359,7 @@
     private async Task ResetSession()
     {
         _sessionCode = string.Empty;
+        _sessionName = null;
         _isInSession = false;
         _sessionEnded = false;
         ActiveQuestionId = null;
@@ -362,10 +379,11 @@
                 return;
             }
 
-            var session = await SessionServices.GetSessionByCodeAsync(savedCode);
+            var session = await SessionServices.GetSessionStatusByCodeAsync(savedCode);
             if (session is not null && session.IsActive && LiveSessionServices.IsConnected)
             {
                 _sessionCode = savedCode;
+                _sessionName = session.Name;
                 await LiveSessionServices.JoinSession(savedCode);
                 await LiveSessionServices.RegisterAsStudent(savedCode);
                 _isInSession = true;
