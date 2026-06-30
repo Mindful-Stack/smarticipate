@@ -8,7 +8,7 @@ public class UpdateQuestion : IEndpoint
 {
     public static void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapPut("api/questions/{questionId}", Handler)
+        app.MapPut("api/questions/{questionId}", Handle)
             .WithTags("Questions")
             .WithName("Update Question")
             .Accepts<Request>("application/json")
@@ -25,7 +25,7 @@ public class UpdateQuestion : IEndpoint
         bool Success
     );
 
-    private static async Task<IResult> Handler(
+    private static async Task<IResult> Handle(
         int questionId,
         Request request,
         [FromServices] UserDbContext db

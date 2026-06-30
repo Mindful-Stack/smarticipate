@@ -8,7 +8,7 @@ public class CreateQuestion : IEndpoint
 {
     public static void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapPost("api/questions", Handler)
+        app.MapPost("api/questions", Handle)
             .WithTags("Questions")
             .WithName("Create Question")
             .Accepts<Request>("application/json")
@@ -25,7 +25,7 @@ public class CreateQuestion : IEndpoint
         int Id
     );
 
-    private static async Task<Created<Response>> Handler(
+    private static async Task<Created<Response>> Handle(
         Request request,
         [FromServices] UserDbContext db
         )

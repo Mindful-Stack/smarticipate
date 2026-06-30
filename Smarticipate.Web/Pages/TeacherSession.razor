@@ -3,6 +3,7 @@
 @inject UserServices UserServices
 @inject QuestionServices QuestionServices
 @inject LiveSessionServices LiveSessionServices
+@inject NavigationManager Navigation
 @implements IAsyncDisposable
 
 <PageTitle>Teacher</PageTitle>
@@ -21,7 +22,7 @@
                 {
                     <div class="inactiveSessionContainer">
                         <h1>Start a live session</h1>
-                        <button class="submitBtn btnWithIcon" onclick="@StartSession">
+                        <button class="submitBtn btnWithIcon" @onclick="StartSession">
                             <MudIcon Icon="@Icons.Material.Outlined.SmartDisplay" Style="width: 40px;"/>
                             Start
                         </button>
@@ -31,6 +32,9 @@
                 {
                     <div class="activeSessionContainer">
                         <div class="sessionInfo">
+                            <MudIconButton Class="backIcon" Color="Color.Dark"
+                                           Icon="@Icons.Material.Outlined.ArrowBack" Size="Size.Small"
+                                           aria-label="Back to dashboard" OnClick="GoToDashboard"/>
                             <h2 class="activeSessionTitle">Active Session: @_sessionCode </h2>
                             <MudIconButton Class="stopIcon" Color="Color.Error"
                                            Icon="@Icons.Material.Outlined.StopCircle" Size="Size.Small"
@@ -41,7 +45,7 @@
                                 <h1 class="questionTimer">Question timer</h1>
                                 <input class="timerInput" type="number" min="0" @bind="@_inputCountdownTime">
                                 <button class="submitBtn btnWithIcon"
-                                        onclick="@(_isTimerOn ? StopQuestionCountdown : StartQuestionCountdown)">
+                                        @onclick="ToggleQuestionCountdown">
                                     <MudIcon Icon="@Icons.Material.Outlined.Timer" Style="width: 40px;"/>
                                     @(_isTimerOn ? "Stop" : "Start")
                                 </button>
@@ -76,6 +80,8 @@
                         <MudIcon Icon="@Icons.Material.Outlined.PeopleOutline" Color="Color.Dark" Size="Size.Large"/>
                         @StudentCount
                     </div>
+                    
+                    <TeacherFeedbackOverlay SessionCode="@_sessionCode"></TeacherFeedbackOverlay>
                 }
             </Authorized>
             <NotAuthorized>
@@ -89,6 +95,10 @@
 </div>
 
 @code {
+    [Parameter, SupplyParameterFromQuery(Name = "code")]
+    public string? Code { get; set; }
+    [Parameter, SupplyParameterFromQuery(Name = "mode")]
+    public string? Mode { get; set; }
 
     //SESSION
     private bool _isLoading = true;
@@ -152,7 +162,6 @@
         await LiveSessionServices.InitializeConnection();
         LiveSessionServices.OnStudentCountChanged -= HandleStudentCountChanged;
         LiveSessionServices.OnStudentCountChanged += HandleStudentCountChanged;
-        Console.WriteLine("Registered StudentCountChanged handler");
 
         await LoadActiveSession();
 
@@ -160,7 +169,21 @@
         {
             await LiveSessionServices.JoinSession(_sessionCode);
             await LiveSessionServices.RegisterAsTeacher(_sessionCode);
-            Console.WriteLine($"Teacher registered to session {_sessionCode}");
+
+            // "Start fresh" from the dashboard: zero the feedback AND clear the question
+            // queue. Resume keeps both. (Questions are also cleared whenever a session ends.)
+            if (Mode == "reset")
+            {
+                await LiveSessionServices.ResetFeedback(_sessionCode);
+                await LiveSessionServices.ClearQuestions(_sessionCode);
+            }
+
+            // `mode` is a one-shot entry instruction. Strip it so a page refresh
+            // reloads the bare URL and doesn't re-run this on the live session.
+            if (!string.IsNullOrEmpty(Mode))
+            {
+                Navigation.NavigateTo("/TeacherSession", replace: true);
+            }
         }
 
         await CloseActiveQuestionsAsync();
@@ -209,6 +232,7 @@
 
                 var request = new SessionServices.SessionRequest(
                     _sessionCode,
+                    null,
                     DateTime.Now,
                     null,
                     userId
@@ -262,7 +286,8 @@
         {
             _isInSession = false;
             _sessionCode = string.Empty;
-            StopQuestionCountdown();
+            await StopQuestionCountdown();
+            Navigation.NavigateTo("/Dashboard");
         }
     }
 
@@ -277,14 +302,11 @@
         if (!string.IsNullOrEmpty(_sessionCode))
         {
             var success = await QuestionServices.CreateQuestionAsync(_sessionCode);
-
             if (success)
             {
-                var sessionResponse = await SessionServices.GetSessionByCodeAsync(_sessionCode);
-                if (sessionResponse?.Questions.Any() == true)
+                var latestQuestion = await GetLatestQuestionAsync();
+                if (latestQuestion is not null)
                 {
-                    var latestQuestion = sessionResponse.Questions.OrderByDescending(q => q.QuestionNumber).First();
-
                     await LiveSessionServices.StartQuestion(latestQuestion.Id, _initialCountdownTime);
                 }
             }
@@ -294,53 +316,42 @@
             }
         }
 
-        if (_countdownTimer != null)
-        {
-            _countdownTimer.Dispose();
-        }
-
+        _countdownTimer?.Dispose();
         _countdownTimer = new Timer(
             async _ =>
             {
-                if (_countdownTime > 0)
+                try
                 {
-                    _countdownTime--;
-                    _countdownDisplay = TimeSpan.FromSeconds(_countdownTime).ToString(@"mm\:ss");
-                    _progressPercentage = ((double)_countdownTime / _initialCountdownTime) * 100;
-
-                    //Update countdown on StudentSession every 5 seconds to reduce network traffic. Every second when under 10 sec remaining
-                    if (_countdownTime % 5 == 0 || _countdownTime <= 10)
+                    if (_countdownTime > 0)
                     {
-                        await LiveSessionServices.UpdateRemainingTime(_countdownTime);
-                    }
+                        _countdownTime--;
+                        _countdownDisplay = TimeSpan.FromSeconds(_countdownTime).ToString(@"mm\:ss");
+                        _progressPercentage = ((double)_countdownTime / _initialCountdownTime) * 100;
 
-                    InvokeAsync(StateHasChanged);
-                }
-                else
-                {
-                    if (!string.IsNullOrEmpty(_sessionCode))
-                    {
-                        var session = await SessionServices.GetSessionByCodeAsync(_sessionCode);
-                        if (session?.Questions?.Any() == true)
+                        // Push remaining time to students every 5s (and every second under 10s).
+                        if (_countdownTime % 5 == 0 || _countdownTime <= 10)
                         {
-                            var latestQuestion = session.Questions
-                                .OrderByDescending(q => q.QuestionNumber)
-                                .FirstOrDefault();
-
-                            if (latestQuestion is not null && !latestQuestion.EndTime.HasValue)
-                            {
-                                await QuestionServices.UpdateQuestionEndTimeAsync(latestQuestion.Id, DateTime.Now);
-                                await GetResponsesForLatestQuestionAsync();
-                            }
+                            await LiveSessionServices.UpdateRemainingTime(_countdownTime);
                         }
 
-                        await LiveSessionServices.StopQuestion();
+                        await InvokeAsync(StateHasChanged);
                     }
+                    else
+                    {
+                        if (!string.IsNullOrEmpty(_sessionCode))
+                        {
+                            await CloseLatestQuestionAsync();
+                        }
 
-                    _countdownTimer?.Dispose();
-                    _countdownTimer = null;
-                    _isTimerOn = false;
-                    InvokeAsync(StateHasChanged);
+                        _countdownTimer?.Dispose();
+                        _countdownTimer = null;
+                        _isTimerOn = false;
+                        await InvokeAsync(StateHasChanged);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Countdown tick error: {ex.Message}");
                 }
             },
             null,
@@ -358,25 +369,37 @@
 
         if (!string.IsNullOrEmpty(_sessionCode))
         {
-            //TODO: add save Endtime to db
-
-            var session = await SessionServices.GetSessionByCodeAsync(_sessionCode);
-            if (session?.Questions?.Any() == true)
-            {
-                var latestQuestion = session.Questions
-                    .OrderByDescending(q => q.QuestionNumber)
-                    .FirstOrDefault();
-
-                if (latestQuestion is not null && !latestQuestion.EndTime.HasValue)
-                {
-                    await QuestionServices.UpdateQuestionEndTimeAsync(latestQuestion.Id, DateTime.Now);
-                    await GetResponsesForLatestQuestionAsync();
-                }
-            }
-
-            await LiveSessionServices.StopQuestion();
+            await CloseLatestQuestionAsync();
         }
     }
+
+    // Latest question (highest QuestionNumber) for the current session, or null.
+    private async Task<SessionServices.QuestionDto?> GetLatestQuestionAsync()
+    {
+        if (string.IsNullOrEmpty(_sessionCode))
+            return null;
+
+        var session = await SessionServices.GetSessionByCodeAsync(_sessionCode);
+        return session?.Questions?
+            .OrderByDescending(q => q.QuestionNumber)
+            .FirstOrDefault();
+    }
+
+    // Close the latest open question (if any), refresh the response chart, and notify students.
+    private async Task CloseLatestQuestionAsync()
+    {
+        var latestQuestion = await GetLatestQuestionAsync();
+        if (latestQuestion is not null && !latestQuestion.EndTime.HasValue)
+        {
+            await QuestionServices.UpdateQuestionEndTimeAsync(latestQuestion.Id, DateTime.Now);
+            await GetResponsesForLatestQuestionAsync();
+        }
+
+        await LiveSessionServices.StopQuestion();
+    }
+
+    private Task ToggleQuestionCountdown()
+        => _isTimerOn ? StopQuestionCountdown() : StartQuestionCountdown();
 
     private async Task CloseActiveQuestionsAsync()
     {
@@ -409,17 +432,7 @@
     {
         try
         {
-            if (string.IsNullOrEmpty(_sessionCode))
-                return;
-
-            var session = await SessionServices.GetSessionByCodeAsync(_sessionCode);
-            if (session?.Questions?.Any() != true)
-                return;
-
-            var latestQuestion = session.Questions
-                .OrderByDescending(q => q.QuestionNumber)
-                .FirstOrDefault();
-
+            var latestQuestion = await GetLatestQuestionAsync();
             if (latestQuestion is null)
                 return;
 
@@ -432,7 +445,7 @@
                 new ChartSeries
                 {
                     Name = "Too Slow",
-                    Data = new double[] { _tooSlowCount,0, 0 },
+                    Data = new double[] { _tooSlowCount, 0, 0 },
                 },
                 new ChartSeries
                 {
@@ -489,7 +502,8 @@
                     }
                 }
 
-                await LiveSessionServices.EndSession();
+                // Only leave the SignalR group on dispose. Do NOT end the session here:
+                // a reload/navigation must keep the session alive (ending is the Stop button only).
                 await LiveSessionServices.LeaveSession();
             }
             catch (Exception ex)
@@ -520,10 +534,10 @@
         );
     }
 
+    private void GoToDashboard() => Navigation.NavigateTo("/Dashboard");
+
     private void HandleStudentCountChanged(int count)
     {
-        Console.WriteLine($"TeacherSession received student count update: {count}");
-
         StudentCount = count;
         InvokeAsync(StateHasChanged);
     }

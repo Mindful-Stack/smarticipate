@@ -1,0 +1,144 @@
+@inject LiveSessionServices Live
+@implements System.IDisposable
+
+<DraggablePanel Class="feedback-overlay student" StorageKey="smarticipate.overlay.student" Style="top: 90px; right: 20px;">
+    <HeaderContent>
+        <span class="drag-grip" aria-hidden="true"></span>
+        <span class="overlay-title">Live Feedback</span>
+    </HeaderContent>
+    <ChildContent>
+        <div class="fb-bar">
+            <div class="axis-label">Pace</div>
+            <div class="slider-row">
+                <span class="emoji">🐢</span>
+                <MudSlider T="int" Min="1" Max="5" Step="1" Value="_pace" ValueChanged="OnPaceChanged" Immediate="true"
+                           TickMarks="true" Color="Color.Primary" Class="fb-slider"/>
+                <span class="emoji">🚀</span>
+            </div>
+        </div>
+        <div class="fb-bar">
+            <div class="axis-label">Understanding</div>
+            <div class="slider-row">
+                <span class="emoji">🥱</span>
+                <MudSlider T="int" Min="1" Max="5" Step="1" Value="_understanding" ValueChanged="OnUnderstandingChanged"
+                           Immediate="true" TickMarks="true" Color="Color.Primary" Class="fb-slider"/>
+                <span class="emoji">🤯</span>
+            </div>
+        </div>
+
+        <div class="ask-section">
+            <div class="ask-row">
+                <button class="ask-btn @(_askOpen ? "active" : "")" @onclick="ToggleAsk" title="Ask a question">⁉️</button>
+                @if (_sent)
+                {
+                    <span class="ask-sent">Question sent!</span>
+                }
+            </div>
+
+            @if (_askOpen)
+            {
+                <div class="ask-box">
+                    <textarea @bind="_questionText" placeholder="Ask an anonymous question..."></textarea>
+                    <div class="ask-actions">
+                        <button class="submitBtn" @onclick="SendQuestion">Send</button>
+                        <button class="cancelBtn" @onclick="CancelAsk">Cancel</button>
+                    </div>
+                </div>
+            }
+        </div>
+    </ChildContent>
+</DraggablePanel>
+
+@code {
+    [Parameter, EditorRequired] public string SessionCode { get; set; } = string.Empty;
+    
+    private int _pace = 3;
+    private int _understanding = 3;
+    private bool _askOpen;
+    private bool _sent;
+    private string _questionText = string.Empty;
+    private CancellationTokenSource? _sentCts;
+
+    protected override void OnInitialized()
+    {
+        Live.OnFeedbackReset -= HandleReset;
+        Live.OnFeedbackReset += HandleReset;
+        Live.OnReconnected -= HandleReconnected;
+        Live.OnReconnected += HandleReconnected;
+    }
+
+    // The hub re-seeds this student at neutral on reconnect; push our actual slider values
+    // back so the teacher's aggregate matches what the student still sees.
+    private async Task HandleReconnected()
+    {
+        await Live.UpdateFeedback(SessionCode, _pace, _understanding);
+    }
+
+    private async Task OnPaceChanged(int value)
+    {
+        _pace = value;
+        await Live.UpdateFeedback(SessionCode, _pace, _understanding);
+    }
+
+    private async Task OnUnderstandingChanged(int value)
+    {
+        _understanding = value;
+        await Live.UpdateFeedback(SessionCode, _pace, _understanding);
+    }
+
+    private void ToggleAsk()
+    {
+        _askOpen = !_askOpen;
+        _sent = false;
+    }
+
+    private void CancelAsk()
+    {
+        _questionText = string.Empty;
+        _askOpen = false;
+    }
+
+    private async Task SendQuestion()
+    {
+        if (string.IsNullOrWhiteSpace(_questionText)) return;
+        await Live.SubmitQuestion(SessionCode, _questionText);
+        _questionText = string.Empty;
+        _askOpen = false;
+        _sent = true;
+
+        _sentCts?.Cancel();
+        _sentCts = new CancellationTokenSource();
+        var token = _sentCts.Token;
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(3000, token);
+                await InvokeAsync(() =>
+                {
+                    _sent = false;
+                    StateHasChanged();
+                });
+            }
+            catch (TaskCanceledException) { }
+        });
+    }
+
+    private void HandleReset()
+    {
+        InvokeAsync(() =>
+        {
+            _pace = 3;
+            _understanding = 3;
+            StateHasChanged();
+        });
+    }
+
+    public void Dispose()
+    {
+        Live.OnFeedbackReset -= HandleReset;
+        Live.OnReconnected -= HandleReconnected;
+        _sentCts?.Cancel();
+        _sentCts?.Dispose();
+    }
+}

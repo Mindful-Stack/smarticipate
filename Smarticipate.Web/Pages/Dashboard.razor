@@ -1,0 +1,101 @@
+@page "/Dashboard"
+@inject SessionServices SessionServices
+@inject UserServices UserServices
+@inject NavigationManager Navigation
+
+<PageTitle>My sessions</PageTitle>
+
+<AuthorizeView>
+    <Authorized>
+        <div class="dashboard">
+            <h1>My sessions</h1>
+
+            <div class="newSession">
+                <input class="sessionNameInput" placeholder="New session name" @bind="_newName">
+                <button class="submitBtn" @onclick="CreateNew">Create new session</button>
+            </div>
+
+            @if (_loading)
+            {
+                <MudProgressCircular Indeterminate="true"/>
+            }
+            else if (!_sessions.Any())
+            {
+                <p>No previous sessions yet.</p>
+            }
+            else
+            {
+                <ul class="sessionList">
+                    @foreach (var s in _sessions)
+                    {
+                        <li class="sessionRow" @key="s.Id">
+                            <span class="sessionName">
+                                @(string.IsNullOrWhiteSpace(s.Name) ? s.SessionCode : s.Name)
+                                @if (!string.IsNullOrWhiteSpace(s.Name))
+                                {
+                                    <span class="sessionCode">@s.SessionCode</span>
+                                }
+                                @if (s.IsActive)
+                                {
+                                    <span class="liveBadge"><span class="liveDot"></span>Live</span>
+                                }
+                            </span>
+                            <span class="sessionMeta">@s.StartTime?.ToString("g")</span>
+                            <span class="sessionActions">
+                                <button class="submitBtn" disabled="@(!s.IsActive)"
+                                        title="@(s.IsActive ? null : "Only a live session can be resumed")"
+                                        @onclick="() => Restart(s.SessionCode, resume: true)">Resume</button>
+                                <button class="cancelBtn" @onclick="() => Restart(s.SessionCode, resume: false)">Start fresh</button>
+                            </span>
+                        </li>
+                    }
+                </ul>
+            }
+        </div>
+    </Authorized>
+    <NotAuthorized>
+        <h2 class="signInPrompt">You need to <a id="signIn" href="/login">sign in</a> to access this page</h2>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    private bool _loading = true;
+    private string _newName = string.Empty;
+    private List<SessionServices.SessionResponse> _sessions = [];
+    private readonly Random _random = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var userId = await UserServices.GetAuthenticatedUser();
+        if (!string.IsNullOrEmpty(userId))
+        {
+            _sessions = await SessionServices.GetAllSessionsByUserAsync(userId);
+        }
+
+        _loading = false;
+    }
+
+    private async Task CreateNew()
+    {
+        var userId = await UserServices.GetAuthenticatedUser();
+        if (string.IsNullOrEmpty(userId)) return;
+
+        var code = _random.Next(10000000, 99999999).ToString();
+        var request = new SessionServices.SessionRequest(code, _newName, DateTime.Now, null, userId);
+        var ok = await SessionServices.CreateSessionAsync(request);
+        if (ok)
+        {
+            // Fresh session, now snapshot to resume
+            Navigation.NavigateTo($"/TeacherSession?code={code}&mode=reset");
+        }
+    }
+
+    private async Task Restart(string code, bool resume)
+    {
+        var ok = await SessionServices.RestartSessionAsync(code);
+        if (ok)
+        {
+            Navigation.NavigateTo($"/TeacherSession?code={code}&mode={(resume ? "resume" : "reset")}");
+        }
+    }
+}

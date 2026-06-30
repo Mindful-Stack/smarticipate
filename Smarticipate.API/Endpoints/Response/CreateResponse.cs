@@ -8,7 +8,7 @@ public class CreateResponse : IEndpoint
 {
     public static void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapPost("api/responses", Handler)
+        app.MapPost("api/responses", Handle)
             .WithTags("Responses")
             .WithName("Create Response")
             .Accepts<Request>("application/json")
@@ -25,7 +25,7 @@ public class CreateResponse : IEndpoint
         int Id
     );
 
-    private static async Task<Created<Response>> Handler(
+    private static async Task<Created<Response>> Handle(
         Request request,
         [FromServices] UserDbContext db)
     {

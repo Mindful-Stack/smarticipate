@@ -10,7 +10,7 @@ public class GetAllSessionsByUserId : IEndpoint
 {
     public static void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapGet("api/sessions/{userId}", Handler)
+        app.MapGet("api/sessions/{userId}", Handle)
             .WithTags("Sessions")
             .WithName("Get Sessions by User")
             .Produces<List<SessionResponse>>(StatusCodes.Status200OK)
@@ -20,6 +20,7 @@ public class GetAllSessionsByUserId : IEndpoint
     public record SessionResponse(
         int Id,
         string SessionCode,
+        string? Name,
         DateTime? StartTime,
         DateTime? EndTime,
         bool IsActive,
@@ -42,7 +43,7 @@ public class GetAllSessionsByUserId : IEndpoint
         int QuestionId
     );
 
-    private static async Task<IResult> Handler(
+    private static async Task<IResult> Handle(
         string userId,
         [FromServices] UserDbContext db)
     {
@@ -62,6 +63,7 @@ public class GetAllSessionsByUserId : IEndpoint
             .Select(s => new SessionResponse(
                 s.Id,
                 s.SessionCode,
+                s.Name,
                 s.StartTime,
                 s.EndTime,
                 s.EndTime == null,

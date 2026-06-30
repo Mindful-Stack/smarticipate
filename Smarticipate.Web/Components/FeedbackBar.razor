@@ -1,0 +1,28 @@
+<div class="fb-bar">
+    <div class="fb-label">
+        <span class="fb-emoji">@LeftEmoji</span>
+        <span class="fb-text">@Text</span>
+        <span class="fb-emoji">@RightEmoji</span>
+    </div>
+    <div class="fb-chart">
+        @{ var total = Counts.Sum(); } @* this axis's own total (equals the respondent count once everyone's seeded) *@
+        @{ var max = Counts.Max(); }
+        @for (int i = 0; i < Counts.Length; i++)
+        {
+            var pct = total > 0 ? Counts[i] * 100.0 / total : 0;
+            var isLeader = Counts[i] > 0 && Counts[i] == max;
+            <div class="fb-step @(isLeader ? "leader" : "")">
+                <div class="fb-track">
+                    <div class="fb-fill" style="height:@(pct.ToString(System.Globalization.CultureInfo.InvariantCulture))%"></div>
+                </div>
+                <span class="fb-count">@Counts[i]</span>
+            </div>
+        }
+    </div>
+</div>
+@code {
+    [Parameter] public string LeftEmoji { get; set; } = string.Empty;
+    [Parameter] public string RightEmoji { get; set; } = string.Empty;
+    [Parameter] public string Text { get; set; } = string.Empty;
+    [Parameter] public int[] Counts { get; set; } = new int[5];
+}

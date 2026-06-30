@@ -7,6 +7,7 @@ using Scalar.AspNetCore;
 using Smarticipate.API.Data.Identity;
 using Smarticipate.API.Endpoints;
 using Smarticipate.API.Hubs;
+using Smarticipate.API.Services;
 using JsonOptions = Microsoft.AspNetCore.Http.Json.JsonOptions;
 
 // Preserve SQL Server-era local-time storage on Postgres timestamptz columns.
@@ -18,9 +19,6 @@ var builder = WebApplication.CreateBuilder(args);
 //Identity DbContext
 builder.Services.AddDbContext<UserDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
-
-// builder.Services.AddDbContext<SmarticipateApiDbContext>(options =>
-//     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 //Identity Endpoints
 builder.Services.AddIdentityApiEndpoints<User>(options =>
@@ -58,7 +56,6 @@ builder.Services.AddAuthorization();
 // Configure JSON options globally => avoid Cycles in Db objects
 builder.Services.Configure<JsonOptions>(options =>
 {
-    options.SerializerOptions.ReferenceHandler = ReferenceHandler.Preserve;
     options.SerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
 });
 
@@ -82,17 +79,31 @@ builder.Services.AddOpenApi(options =>
 //Configure CORS
 builder.Services.AddCors(options =>
 {
+    // Allowed Web origins come from config ("Cors:AllowedOrigins"); falls back to the
+    // local dev Web origin so nothing changes locally.
+    // TODO: set "Cors:AllowedOrigins" in production config (appsettings/env) before deploy —
+    // the hardcoded fallback below is local-dev only.
+    var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+                         ?? new[] { "https://localhost:7045" };
     options.AddDefaultPolicy(
-        builder =>
+        policy =>
         {
-            builder.WithOrigins("https://localhost:7045") // Adjust the origin as needed
+            policy.WithOrigins(allowedOrigins)
                 .AllowAnyHeader()
                 .AllowAnyMethod()
                 .AllowCredentials();
         });
 });
 
-builder.Services.AddSignalR();
+builder.Services.AddSignalR(options =>
+{
+    options.KeepAliveInterval = TimeSpan.FromSeconds(5);
+    options.ClientTimeoutInterval = TimeSpan.FromSeconds(15);
+});
+
+// Live feedback
+builder.Services.AddSingleton<LiveFeedbackStore>();
+builder.Services.AddHostedService<FeedbackSnapshotService>();
 
 var app = builder.Build();
 

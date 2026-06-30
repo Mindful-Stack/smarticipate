@@ -69,7 +69,7 @@ public class SessionServices(IHttpClientFactory httpClientFactory) : IService
             return null;
         }
     }
-    
+
     public async Task<List<SessionResponse>> GetAllSessionsByUserAsync(string userId)
     {
         try
@@ -113,7 +113,27 @@ public class SessionServices(IHttpClientFactory httpClientFactory) : IService
         }
     }
 
-    public record SessionRequest(string SessionCode, DateTime? StartTime, DateTime? EndTime, string UserId);
+    public async Task<bool> RestartSessionAsync(string sessionCode)
+    {
+        try
+        {
+            var client = httpClientFactory.CreateClient("API");
+            var response = await client.PutAsync($"api/sessions/{Uri.EscapeDataString(sessionCode)}/restart", null);
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Exception when restarting session: {ex.Message}");
+            return false;
+        }
+    }
+
+    public record SessionRequest(
+        string SessionCode,
+        string? Name,
+        DateTime? StartTime,
+        DateTime? EndTime,
+        string UserId);
 
     public record ActiveSessionResponse
     {
@@ -129,6 +149,7 @@ public class SessionServices(IHttpClientFactory httpClientFactory) : IService
     {
         public int Id { get; set; }
         public string SessionCode { get; set; }
+        public string Name { get; set; }
         public DateTime? StartTime { get; set; }
         public DateTime? EndTime { get; set; }
         public bool IsActive { get; set; }

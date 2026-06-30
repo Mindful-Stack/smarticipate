@@ -1,0 +1,176 @@
+.dashboard {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    padding: 2rem 2.5rem;
+    width: 100%;
+}
+
+.signInPrompt {
+    padding: 2rem 2.5rem;
+    font-family: var(--inter);
+    font-weight: bold;
+    font-size: 1.5rem;
+    color: var(--dark);
+}
+
+#signIn {
+    font-family: var(--ekwarg);
+    font-style: italic;
+    color: var(--red);
+    text-decoration: underline;
+    text-underline-offset: var(--underline-offest);
+
+    &:hover {
+        text-decoration: none;
+        cursor: pointer;
+    }
+
+    &:visited {
+        color: var(--teal);
+    }
+}
+
+.dashboard h1 {
+    font-family: var(--ekwarg);
+    color: var(--dark);
+    text-decoration: underline;
+    text-underline-offset: var(--underline-offest);
+    font-weight: bold;
+}
+
+/* ########### NEW SESSION ########### */
+.newSession {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.sessionNameInput {
+    flex: 1 1 18rem;
+    max-width: 28rem;
+    font-family: var(--inter);
+    font-size: 1rem;
+    color: var(--dark);
+    background-color: var(--beige);
+    border: 2px solid var(--dark);
+    border-radius: var(--border-radius);
+    padding: var(--padding-box);
+    outline: none;
+
+    &::placeholder {
+        color: var(--purple);
+    }
+
+    &:focus {
+        border: 2px solid var(--red);
+    }
+}
+
+/* ########### SESSION LIST ########### */
+.sessionList {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: .75rem;
+}
+
+.sessionRow {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    background-color: var(--beige);
+    border: 2px solid var(--dark);
+    border-radius: var(--border-radius);
+}
+
+.sessionName {
+    font-family: var(--ekwarg);
+    font-size: 1.25rem;
+    color: var(--dark);
+}
+
+.sessionCode {
+    margin-left: .6rem;
+    font-family: var(--inter);
+    font-size: .85rem;
+    font-weight: normal;
+    color: var(--purple);
+    opacity: .7;
+    vertical-align: middle;
+}
+
+.liveBadge {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    margin-left: .6rem;
+    padding: .1rem .5rem;
+    font-family: var(--inter);
+    font-size: .7rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--beige);
+    background-color: var(--red);
+    border: 2px solid var(--dark);
+    border-radius: var(--border-radius);
+    vertical-align: middle;
+}
+
+.liveDot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background-color: var(--beige);
+    animation: livePulse 1.2s ease-in-out infinite;
+}
+
+@keyframes livePulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: .25; }
+}
+
+.sessionMeta {
+    font-family: var(--inter);
+    font-size: .9rem;
+    color: var(--purple);
+}
+
+.sessionActions {
+    display: flex;
+    gap: .5rem;
+    justify-content: flex-end;
+}
+
+/* Resume is only meaningful for the live session; grey it out for ended ones. */
+.sessionActions .submitBtn:disabled,
+.sessionActions .submitBtn:disabled:hover {
+    opacity: .4;
+    cursor: not-allowed;
+    color: var(--dark);
+    background-position: right bottom;
+}
+
+.cancelBtn {
+    padding: var(--padding-box);
+    border: 2px solid var(--dark);
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    font-family: var(--inter);
+    font-size: 1rem;
+    font-weight: bold;
+    color: var(--dark);
+    background-color: transparent;
+    transition: all .3s ease-in-out;
+
+    &:hover {
+        background-color: var(--dark);
+        color: var(--beige);
+    }
+}

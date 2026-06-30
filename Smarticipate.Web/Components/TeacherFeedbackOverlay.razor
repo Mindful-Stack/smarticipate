@@ -1,0 +1,107 @@
+@inject LiveSessionServices Live
+@implements System.IDisposable
+
+<DraggablePanel Class="feedback-overlay teacher" StorageKey="smarticipate.overlay.teacher" Style="top: 90px; right: 20px;">
+    <HeaderContent>
+        <span class="drag-grip" aria-hidden="true"></span>
+        <span class="overlay-title">Live Feedback @_respondentCount</span>
+        <button class="reset-btn" @onclick="ResetFeedback" title="Reset feedback">⟳</button>
+    </HeaderContent>
+    <ChildContent>
+        <FeedbackBar LeftEmoji="🐢" Text="Pace" RightEmoji="🚀" Counts="_paceCounts"/>
+        <FeedbackBar LeftEmoji="🥱" Text="Understanding" RightEmoji="🤯" Counts="_understandingCounts"/>
+
+        <div class="question-queue">
+            <h4 class="queue-title">Questions <span class="queue-badge">@_questions.Count</span></h4>
+            @if (_questions.Count == 0)
+            {
+                <p class="queue-empty">No questions yet</p>
+            }
+            @foreach (var q in _questions)
+            {
+                <div class="question-card" @key="q.Id">
+                    <span class="q-text">@q.Text</span>
+                    <button class="q-close" @onclick="() => Dismiss(q.Id)" title="Dismiss">✕</button>
+                </div>
+            }
+        </div>
+    </ChildContent>
+</DraggablePanel>
+
+@code {
+    [Parameter, EditorRequired] public string SessionCode { get; set; } = string.Empty;
+
+    private int[] _paceCounts = new int[5];
+    private int[] _understandingCounts = new int[5];
+    private int _respondentCount;
+    private readonly List<QuestionItem> _questions = new();
+
+    private record QuestionItem(int Id, string Text, DateTime CreatedAt);
+
+    protected override async Task OnInitializedAsync()
+    {
+        Live.OnFeedbackUpdated -= HandleFeedbackUpdated;
+        Live.OnFeedbackUpdated += HandleFeedbackUpdated;
+        Live.OnQuestionReceived -= HandleQuestionReceived;
+        Live.OnQuestionReceived += HandleQuestionReceived;
+        Live.OnQuestionDismissed -= HandleQuestionDismissed;
+        Live.OnQuestionDismissed += HandleQuestionDismissed;
+        Live.OnReconnected -= HandleReconnected;
+        Live.OnReconnected += HandleReconnected;
+
+        await Live.RequestTeacherState(SessionCode);
+    }
+
+    private async Task HandleReconnected()
+    {
+        _questions.Clear();
+        await Live.RequestTeacherState(SessionCode);
+    }
+
+    private void HandleFeedbackUpdated(int[] pace, int[] understanding, int count)
+    {
+        InvokeAsync(() =>
+        {
+            _paceCounts = pace;
+            _understandingCounts = understanding;
+            _respondentCount = count;
+            StateHasChanged();
+        });
+    }
+
+    private void HandleQuestionReceived(int id, string text, DateTime createdAt)
+    {
+        InvokeAsync(() =>
+        {
+            if (_questions.All(q => q.Id != id))
+            {
+                _questions.Add(new QuestionItem(id, text, createdAt));
+                StateHasChanged();
+            }
+        });
+    }
+
+    private void HandleQuestionDismissed(int id)
+    {
+        InvokeAsync(() =>
+        {
+            _questions.RemoveAll(q => q.Id == id);
+            StateHasChanged();
+        });
+    }
+
+    private async Task Dismiss(int id) => await Live.DismissQuestion(SessionCode, id);
+
+    // No optimistic local clear: the hub snaps everyone to neutral and broadcasts
+    // the resulting aggregate back, which HandleFeedbackUpdated applies.
+    private async Task ResetFeedback() => await Live.ResetFeedback(SessionCode);
+
+    public void Dispose()
+    {
+        Live.OnFeedbackUpdated -= HandleFeedbackUpdated;
+        Live.OnQuestionReceived -= HandleQuestionReceived;
+        Live.OnQuestionDismissed -= HandleQuestionDismissed;
+        Live.OnReconnected -= HandleReconnected;
+    }
+
+}

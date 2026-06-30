@@ -8,7 +8,7 @@ public class UpdateSession : IEndpoint
 {
     public static void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapPut("api/sessions/{sessionCode}", Handler)
+        app.MapPut("api/sessions/{sessionCode}", Handle)
             .WithTags("Sessions")
             .WithName("Update Session")
             .Accepts<Request>("application/json")
@@ -20,7 +20,7 @@ public class UpdateSession : IEndpoint
         [FromBody] DateTime? EndTime
     );
 
-    private static async Task<IResult> Handler(
+    private static async Task<IResult> Handle(
         string sessionCode,
         Request request,
         [FromServices] UserDbContext db)
