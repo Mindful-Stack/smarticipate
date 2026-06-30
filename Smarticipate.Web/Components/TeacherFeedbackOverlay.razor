@@ -8,8 +8,8 @@
         <button class="reset-btn" @onclick="ResetFeedback" title="Reset feedback">⟳</button>
     </HeaderContent>
     <ChildContent>
-        <FeedbackBar Label="🐢 Pace 🚀" Counts="_paceCounts"/>
-        <FeedbackBar Label="😞 Understanding 🤯" Counts="_understandingCounts"/>
+        <FeedbackBar LeftEmoji="🐢" Text="Pace" RightEmoji="🚀" Counts="_paceCounts"/>
+        <FeedbackBar LeftEmoji="🥱" Text="Understanding" RightEmoji="🤯" Counts="_understandingCounts"/>
 
         <div class="question-queue">
             <h4 class="queue-title">Questions <span class="queue-badge">@_questions.Count</span></h4>

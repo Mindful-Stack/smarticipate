@@ -21,14 +21,8 @@
     </div>
 </div>
 @code {
-    [Parameter] public string Label { get; set; } = string.Empty;
+    [Parameter] public string LeftEmoji { get; set; } = string.Empty;
+    [Parameter] public string RightEmoji { get; set; } = string.Empty;
+    [Parameter] public string Text { get; set; } = string.Empty;
     [Parameter] public int[] Counts { get; set; } = new int[5];
-
-    // Label is "<emoji> <text...> <emoji>"; split so emojis anchor the ends
-    // and the text sits in the middle, mirroring the bar distribution below.
-    private string[] Parts => Label.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-    private string LeftEmoji => Parts.Length > 0 ? Parts[0] : string.Empty;
-    private string RightEmoji => Parts.Length > 1 ? Parts[^1] : string.Empty;
-    private string Text => Parts.Length > 2 ? string.Join(' ', Parts[1..^1]) : string.Empty;
-
 }
