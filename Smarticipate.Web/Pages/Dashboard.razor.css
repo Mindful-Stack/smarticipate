@@ -95,6 +95,16 @@
     color: var(--dark);
 }
 
+.sessionCode {
+    margin-left: .6rem;
+    font-family: var(--inter);
+    font-size: .85rem;
+    font-weight: normal;
+    color: var(--purple);
+    opacity: .7;
+    vertical-align: middle;
+}
+
 .liveBadge {
     display: inline-flex;
     align-items: center;

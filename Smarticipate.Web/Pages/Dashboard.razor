@@ -31,6 +31,10 @@
                         <li class="sessionRow" @key="s.Id">
                             <span class="sessionName">
                                 @(string.IsNullOrWhiteSpace(s.Name) ? s.SessionCode : s.Name)
+                                @if (!string.IsNullOrWhiteSpace(s.Name))
+                                {
+                                    <span class="sessionCode">@s.SessionCode</span>
+                                }
                                 @if (s.IsActive)
                                 {
                                     <span class="liveBadge"><span class="liveDot"></span>Live</span>
