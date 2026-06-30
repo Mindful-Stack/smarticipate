@@ -1,16 +1,16 @@
-﻿using System.Dynamic;
-using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.SignalR.Client;
-using MudBlazor;
+﻿using Microsoft.AspNetCore.SignalR.Client;
+using Microsoft.Extensions.Configuration;
 
 namespace Smarticipate.Web.Services;
 
-public class LiveSessionServices(NavigationManager navigationManager) : IAsyncDisposable
+public class LiveSessionServices(IConfiguration configuration) : IAsyncDisposable
 {
-    public HubConnection? _hubConnection { get; private set; }
+    private HubConnection? _hubConnection;
     private string? _role; // teacher or student?
+    private bool _disposed;
 
     public bool IsConnected => _hubConnection?.State == HubConnectionState.Connected;
+    public string? ConnectionId => _hubConnection?.ConnectionId;
     public string? CurrentSessionCode { get; private set; }
 
     public event Action<int, int, int>? OnQuestionStarted;
@@ -29,8 +29,15 @@ public class LiveSessionServices(NavigationManager navigationManager) : IAsyncDi
     {
         if (_hubConnection is null)
         {
+            // Hub URL is derived from the configured API base ("ApiUrl"); falls back to the
+            // local dev API so nothing changes locally.
+            // TODO: set "ApiUrl" in production config before deploy — the hardcoded fallback
+            // below is local-dev only.
+            var apiBase = configuration["ApiUrl"] ?? "https://localhost:44397/";
+            var hubUrl = new Uri(new Uri(apiBase), "sessionHub");
+
             _hubConnection = new HubConnectionBuilder()
-                .WithUrl(navigationManager.ToAbsoluteUri("https://localhost:44397/sessionHub"), options =>
+                .WithUrl(hubUrl, options =>
                 {
                     options.Transports = Microsoft.AspNetCore.Http.Connections.HttpTransportType.WebSockets;
                     options.SkipNegotiation = true;
@@ -41,85 +48,76 @@ public class LiveSessionServices(NavigationManager navigationManager) : IAsyncDi
             _hubConnection.ServerTimeout = TimeSpan.FromSeconds(15);
             _hubConnection.KeepAliveInterval = TimeSpan.FromSeconds(5);
 
-            //debug handler
-            _hubConnection.On<string>("Debug", (message) => { Console.WriteLine($"SignalR Debug: {message}"); });
-
-            _hubConnection.On("TeacherDisconnected", () =>
-            {
-                Console.WriteLine("Teacher disconnected unexpectedly");
-                OnTeacherDisconnected?.Invoke();
-            });
-
-            _hubConnection.On<int>("StudentCountChanged", (count) =>
-            {
-                Console.WriteLine($"LiveSessionServices received StudentCountChanged: {count}");
-                OnStudentCountChanged?.Invoke(count);
-            });
-
-            _hubConnection.On<int, int, int>("QuestionStarted", (questionId, duration, remainingTime) =>
-                {
-                    Console.WriteLine(
-                        $"RECEIVED QuestionStarted event: questionId={questionId}, duration={duration}, remainingTime={remainingTime}");
-                    OnQuestionStarted?.Invoke(questionId, duration, remainingTime);
-                }
-            );
-
-            _hubConnection.On("QuestionStopped", () => { OnQuestionStopped?.Invoke(); });
-
-            _hubConnection.On<int>("TimerUpdated", (remainingTime) => { OnTimerUpdated?.Invoke(remainingTime); });
-
-            _hubConnection.On("SessionEnded", () => { OnSessionEnded?.Invoke(); });
-
+            _hubConnection.On("TeacherDisconnected", () => OnTeacherDisconnected?.Invoke());
+            _hubConnection.On<int>("StudentCountChanged", (count) => OnStudentCountChanged?.Invoke(count));
+            _hubConnection.On<int, int, int>("QuestionStarted",
+                (questionId, duration, remainingTime) => OnQuestionStarted?.Invoke(questionId, duration, remainingTime));
+            _hubConnection.On("QuestionStopped", () => OnQuestionStopped?.Invoke());
+            _hubConnection.On<int>("TimerUpdated", (remainingTime) => OnTimerUpdated?.Invoke(remainingTime));
+            _hubConnection.On("SessionEnded", () => OnSessionEnded?.Invoke());
             _hubConnection.On<int[], int[], int>("FeedbackUpdated",
                 (pace, und, count) => OnFeedbackUpdated?.Invoke(pace, und, count));
-
             _hubConnection.On<int, string, DateTime>("QuestionReceived",
                 (id, text, createdAt) => OnQuestionReceived?.Invoke(id, text, createdAt));
-
             _hubConnection.On<int>("QuestionDismissed", (id) => OnQuestionDismissed?.Invoke(id));
-
             _hubConnection.On("FeedbackReset", () => OnFeedbackReset?.Invoke());
 
-            //reconnection event handling
-            _hubConnection.Reconnected += async (connectionId) =>
-            {
-                Console.WriteLine($"Reconnected with new id {connectionId}; re-establishing session state");
-                await ReestablishAsync();
-            };
+            _hubConnection.Reconnected += async (_) => await ReestablishAsync();
 
             _hubConnection.Closed += async (error) =>
             {
                 Console.WriteLine($"Connection closed: {error?.Message}");
-                await Task.Delay(new Random().Next(0, 5) * 1000);
-                await _hubConnection.StartAsync();
-                // A manual StartAsync creates a brand-new connection, so Reconnected won't
-                // fire. Re-establish here so the user isn't left un-registered.
-                await ReestablishAsync();
+                if (_disposed) return;
+                try
+                {
+                    await Task.Delay(Random.Shared.Next(1, 5) * 1000);
+                    await _hubConnection!.StartAsync();
+                    // A manual StartAsync creates a brand-new connection, so Reconnected won't
+                    // fire. Re-establish here so the user isn't left un-registered.
+                    await ReestablishAsync();
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Reconnect after close failed: {ex.Message}");
+                }
             };
 
-            // Only start if not already connected
             if (_hubConnection.State == HubConnectionState.Disconnected)
-            {
                 await _hubConnection.StartAsync();
-                Console.WriteLine($"Connection started with ID: {_hubConnection.ConnectionId}");
-            }
         }
         else if (_hubConnection.State == HubConnectionState.Disconnected)
         {
-            // Try to start the connection if it exists but is disconnected
             await _hubConnection.StartAsync();
-            Console.WriteLine($"Connection restarted with ID: {_hubConnection.ConnectionId}");
         }
+    }
+
+    // Ensures the hub is connected, starting it if needed, and waits (briefly) for the
+    // Connected state instead of relying on fixed delays.
+    public async Task<bool> EnsureConnectedAsync(TimeSpan? timeout = null)
+    {
+        if (_hubConnection is null)
+            await InitializeConnection();
+
+        var deadline = DateTime.UtcNow + (timeout ?? TimeSpan.FromSeconds(10));
+        while (!IsConnected && DateTime.UtcNow < deadline)
+        {
+            if (_hubConnection!.State == HubConnectionState.Disconnected)
+            {
+                try { await _hubConnection.StartAsync(); }
+                catch { await Task.Delay(100); }
+            }
+            else
+            {
+                await Task.Delay(50); // Connecting / Reconnecting — give it a moment
+            }
+        }
+
+        return IsConnected;
     }
 
     public async Task JoinSession(string sessionCode)
     {
-        if (_hubConnection is null)
-        {
-            await InitializeConnection();
-        }
-
-        if (IsConnected)
+        if (await EnsureConnectedAsync())
         {
             await _hubConnection!.InvokeAsync("JoinSession", sessionCode);
             CurrentSessionCode = sessionCode;
@@ -145,12 +143,7 @@ public class LiveSessionServices(NavigationManager navigationManager) : IAsyncDi
 
     public async Task RegisterAsTeacher(string sessionCode)
     {
-        if (_hubConnection is null)
-        {
-            await InitializeConnection();
-        }
-
-        if (IsConnected)
+        if (await EnsureConnectedAsync())
         {
             await _hubConnection!.InvokeAsync("RegisterAsTeacher", sessionCode);
             CurrentSessionCode = sessionCode;
@@ -162,27 +155,20 @@ public class LiveSessionServices(NavigationManager navigationManager) : IAsyncDi
     {
         try
         {
-            if (_hubConnection is null)
-            {
-                await InitializeConnection();
-                await Task.Delay(500); // Additional delay to ensure connection is ready
-            }
-
-            if (IsConnected)
+            if (await EnsureConnectedAsync())
             {
                 await _hubConnection!.InvokeAsync("RegisterAsStudent", sessionCode);
                 CurrentSessionCode = sessionCode;
                 _role = "student";
-                Console.WriteLine("LiveSessionServices.RegisterAsStudent: Successfully registered");
             }
             else
             {
-                Console.WriteLine("LiveSessionServices.RegisterAsStudent: Failed - Connection not established");
+                Console.WriteLine("RegisterAsStudent: connection not established");
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"LiveSessionServices.RegisterAsStudent: ERROR - {ex.Message}");
+            Console.WriteLine($"RegisterAsStudent error: {ex.Message}");
         }
     }
 
@@ -284,27 +270,20 @@ public class LiveSessionServices(NavigationManager navigationManager) : IAsyncDi
 
     public async Task SendHeartbeat()
     {
-        if (IsConnected)
+        if (!IsConnected) return;
+        try
         {
-            try
-            {
-                await _hubConnection!.InvokeAsync("SendHeartbeat");
-                Console.WriteLine("Heartbeat sent");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error sending heartbeat: {ex.Message}");
-                throw;
-            }
+            await _hubConnection!.InvokeAsync("SendHeartbeat");
         }
-        else
+        catch (Exception ex)
         {
-            throw new InvalidOperationException("Connection is not active");
+            Console.WriteLine($"Error sending heartbeat: {ex.Message}");
         }
     }
 
     public async ValueTask DisposeAsync()
     {
+        _disposed = true;
         if (_hubConnection is not null)
         {
             await LeaveSession();
