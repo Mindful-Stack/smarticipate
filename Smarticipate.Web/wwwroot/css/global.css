@@ -176,6 +176,41 @@ label {
     }
 }
 
+/* ########## SESSION HEADER CONTROLS (stop / leave) ########## */
+.stopSessionBtn,
+.leaveSessionBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    padding: .35rem .8rem;
+    font-family: var(--inter);
+    font-size: .95rem;
+    font-weight: bold;
+    border: 2px solid var(--dark);
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: all .2s ease-in-out;
+}
+
+.stopSessionBtn {
+    color: var(--beige);
+    background-color: var(--red);
+}
+
+.stopSessionBtn:hover {
+    background-color: var(--dark);
+}
+
+.leaveSessionBtn {
+    color: var(--dark);
+    background-color: transparent;
+}
+
+.leaveSessionBtn:hover {
+    background-color: var(--dark);
+    color: var(--beige);
+}
+
 /* ##########################Background gradient animation ########################## */
 @property --g4-1-x-position {
     syntax: "<percentage>";
