@@ -13,8 +13,8 @@ public class SessionHub(
     IHubContext<SessionHub> hubContext)
     : Hub
 {
-    // Grace window before a vanished teacher is reported gone — absorbs a reload/reconnect.
-    private static readonly TimeSpan TeacherDisconnectGrace = TimeSpan.FromSeconds(8);
+    // Grace before a vanished teacher is reported gone: long enough to ride out a reload, a device switch, or a multi-minute network outage so connected students are not dropped while the teacher reconnects. The teacher client keeps retrying for the same window (see LiveSessionServices).
+    private static readonly TimeSpan TeacherDisconnectGrace = TimeSpan.FromMinutes(3);
 
     private static readonly Dictionary<string, HashSet<string>> _teacherConnections = new();
     private static readonly Dictionary<string, HashSet<string>> _studentConnections = new();

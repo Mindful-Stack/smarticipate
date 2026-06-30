@@ -42,7 +42,7 @@ public class LiveSessionServices(IConfiguration configuration) : IAsyncDisposabl
                     options.Transports = Microsoft.AspNetCore.Http.Connections.HttpTransportType.WebSockets;
                     options.SkipNegotiation = true;
                 })
-                .WithAutomaticReconnect()
+                .WithAutomaticReconnect(new PersistentRetryPolicy())
                 .Build();
 
             _hubConnection.ServerTimeout = TimeSpan.FromSeconds(15);
@@ -288,6 +288,27 @@ public class LiveSessionServices(IConfiguration configuration) : IAsyncDisposabl
         {
             await LeaveSession();
             await _hubConnection.DisposeAsync();
+        }
+    }
+
+    // Keep reconnecting for a few minutes (not the default ~45s) so a teacher whose connection drops can rejoin before the server drops their students. Mirrors SessionHub.TeacherDisconnectGrace.
+    private sealed class PersistentRetryPolicy : IRetryPolicy
+    {
+        private static readonly TimeSpan ReconnectWindow = TimeSpan.FromMinutes(3);
+
+        public TimeSpan? NextRetryDelay(RetryContext retryContext)
+        {
+            if (retryContext.ElapsedTime >= ReconnectWindow)
+                return null;
+
+            // Fast early retries catch quick blips, then settle into a steady cadence.
+            return retryContext.PreviousRetryCount switch
+            {
+                0 => TimeSpan.Zero,
+                1 => TimeSpan.FromSeconds(2),
+                2 => TimeSpan.FromSeconds(5),
+                _ => TimeSpan.FromSeconds(10),
+            };
         }
     }
 }
