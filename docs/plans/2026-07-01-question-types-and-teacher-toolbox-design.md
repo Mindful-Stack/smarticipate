@@ -1,8 +1,8 @@
 # Question Types and Teacher Toolbox: Backend Design
 
 Date: 2026-07-01
-Status: Proposed (for review)
-Scope: Backend only (data model, patterns, architecture). UI, response visualisation, and quizzes are handled in later work.
+Status: Proposed (for review). The backend implementation lands on this same branch once the design is agreed; this document opens the branch so the architecture can be reviewed before code is written.
+Scope: Backend (data model, patterns, architecture, migrations, endpoints, real-time wiring). UI, response visualisation, and quizzes are handled in later work.
 
 ## For the reviewer: where we are and where we are going
 
