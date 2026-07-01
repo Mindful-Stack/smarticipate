@@ -45,8 +45,27 @@
 
 /* Share icon that opens the share sheet, used in the dashboard rows and the teacher session header. */
 .shareTrigger {
-    margin-left: .4rem;
     vertical-align: middle;
+}
+
+/* MudBlazor resets button margins, so beat its specificity to space the share icon from the code in the dashboard row. */
+.sessionName .mud-icon-button.shareTrigger {
+    margin-left: .6rem;
+}
+
+/* Click-to-copy session code, styled to sit inline as plain text (dashboard rows and student session). */
+.codeCopyable {
+    display: inline-flex;
+    align-items: center;
+    padding: 0;
+    background: none;
+    border: none;
+    cursor: pointer;
+}
+
+.codeCopyable:hover {
+    text-decoration: underline;
+    text-underline-offset: 3px;
 }
 
 /* Snackbars must sit above everything, including the feedback overlay (z-index 10000) and the share modal (10050). MudBlazor positions the layer on #mud-snackbar-container via --mud-zindex-snackbar. */
@@ -228,12 +247,47 @@ label {
 
 .leaveSessionBtn {
     color: var(--dark);
-    background-color: transparent;
+    transition: all 1s ease-in-out;
+    background: linear-gradient(to left, transparent 50%, var(--red) 50%);
+    background-size: 200% 100%;
+    background-position: right bottom;
 }
 
 .leaveSessionBtn:hover {
-    background-color: var(--dark);
+    background-position: left bottom;
     color: var(--beige);
+}
+
+/* Neo-brutalist bar wrapping the session title and its controls (teacher + student). */
+.actionBar {
+    padding: .45rem .7rem;
+    align-items: center;
+    background-color: var(--beige);
+    border: 2px solid var(--dark);
+    border-radius: var(--border-radius);
+    box-shadow: 4px 4px 0 var(--dark);
+    width: max-content;
+    max-width: 100%;
+    margin-bottom: 6px;
+    justify-self: start;
+}
+
+/* Cap the icon buttons to the text-button height so both action bars end up the same height. */
+.actionBar .mud-icon-button {
+    height: 2rem;
+    width: 2rem;
+    min-width: 2rem;
+    padding: 0;
+}
+
+.actionBarSep {
+    flex: 0 0 auto;
+    align-self: center;
+    width: 2px;
+    height: 20px;
+    margin: 0 .1rem;
+    background-color: var(--dark);
+    opacity: .25;
 }
 
 /* ##########################Background gradient animation ########################## */

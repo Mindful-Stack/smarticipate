@@ -64,7 +64,7 @@
 
 .activeSessionContainer {
     display: grid;
-    grid-template-rows: 2rem auto;
+    grid-template-rows: max-content auto;
     align-self: start;
     padding: 2rem 0 0 2.5rem;
     width: 100%;

@@ -23,7 +23,7 @@
         else if (_isInSession && ActiveQuestionId.HasValue)
         {
             <div class="activeSessionContainer">
-                <div class="sessionInfo">
+                <div class="sessionInfo actionBar">
                     <div class="sessionHeading">
                         <h2 class="activeSessionTitle">@(string.IsNullOrWhiteSpace(_sessionName) ? _sessionCode : _sessionName)</h2>
                         @if (!string.IsNullOrWhiteSpace(_sessionName))
@@ -31,6 +31,7 @@
                             @CodePill
                         }
                     </div>
+                    <span class="actionBarSep"></span>
                     <button class="leaveSessionBtn" aria-label="Leave session" @onclick="LeaveSession">
                         <MudIcon Icon="@Icons.Material.Outlined.ExitToApp" Size="Size.Small"/>
                         Leave
@@ -73,7 +74,7 @@
         else if (_isInSession || _hasAnswered)
         {
             <div class="activeSessionContainer">
-                <div class="sessionInfo">
+                <div class="sessionInfo actionBar">
                     <div class="sessionHeading">
                         <h2 class="activeSessionTitle">@(string.IsNullOrWhiteSpace(_sessionName) ? _sessionCode : _sessionName)</h2>
                         @if (!string.IsNullOrWhiteSpace(_sessionName))
@@ -81,6 +82,7 @@
                             @CodePill
                         }
                     </div>
+                    <span class="actionBarSep"></span>
                     <button class="leaveSessionBtn" aria-label="Leave session" @onclick="LeaveSession">
                         <MudIcon Icon="@Icons.Material.Outlined.ExitToApp" Size="Size.Small"/>
                         Leave

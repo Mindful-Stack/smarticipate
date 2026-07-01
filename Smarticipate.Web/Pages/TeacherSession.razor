@@ -21,13 +21,14 @@
                 else
                 {
                     <div class="activeSessionContainer">
-                        <div class="sessionInfo">
+                        <div class="sessionInfo actionBar">
                             <MudIconButton Class="backIcon" Color="Color.Dark"
                                            Icon="@Icons.Material.Outlined.ArrowBack" Size="Size.Small"
                                            aria-label="Back to dashboard" OnClick="GoToDashboard"/>
                             <div class="sessionHeading">
                                 <h2 class="activeSessionTitle">@(string.IsNullOrWhiteSpace(_sessionName) ? _sessionCode : _sessionName)</h2>
                             </div>
+                            <span class="actionBarSep"></span>
                             <ShareButton SessionCode="@_sessionCode" SessionName="@_sessionName"/>
                             <button class="stopSessionBtn" aria-label="Stop session" @onclick="EndSession">
                                 <MudIcon Icon="@Icons.Material.Outlined.StopCircle" Size="Size.Small"/>
