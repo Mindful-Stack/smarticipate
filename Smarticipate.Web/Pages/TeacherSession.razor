@@ -27,20 +27,8 @@
                                            aria-label="Back to dashboard" OnClick="GoToDashboard"/>
                             <div class="sessionHeading">
                                 <h2 class="activeSessionTitle">@(string.IsNullOrWhiteSpace(_sessionName) ? _sessionCode : _sessionName)</h2>
-                                @if (!string.IsNullOrWhiteSpace(_sessionName))
-                                {
-                                    <span class="activeSessionCode">@_sessionCode</span>
-                                }
                             </div>
-                            <span class="codeCopyGroup">
-                                <CopyButton Text="@_sessionCode"
-                                            Icon="@Icons.Material.Outlined.ContentCopy"
-                                            Tooltip="Copy code">
-                                    <SuccessMessage>Session <span class="copyEmphasis">code</span> copied to clipboard</SuccessMessage>
-                                </CopyButton>
-                                <span class="copySep"></span>
-                                <ShareLinkButton SessionCode="@_sessionCode"/>
-                            </span>
+                            <ShareButton SessionCode="@_sessionCode" SessionName="@_sessionName"/>
                             <button class="stopSessionBtn" aria-label="Stop session" @onclick="EndSession">
                                 <MudIcon Icon="@Icons.Material.Outlined.StopCircle" Size="Size.Small"/>
                                 Stop

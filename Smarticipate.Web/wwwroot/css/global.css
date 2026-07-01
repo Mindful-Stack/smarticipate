@@ -43,21 +43,19 @@
     text-underline-offset: var(--underline-offest);
 }
 
-/* Copy-code + separator + copy-link cluster, shared by the dashboard rows and the teacher session header. */
-.codeCopyGroup {
-    display: inline-flex;
-    align-items: center;
-    gap: .1rem;
-    margin-left: .5rem;
+/* Share icon that opens the share sheet, used in the dashboard rows and the teacher session header. */
+.shareTrigger {
+    margin-left: .4rem;
     vertical-align: middle;
 }
 
-.copySep {
-    width: 2px;
-    height: 18px;
-    margin: 0 .25rem;
-    background-color: var(--dark);
-    opacity: .3;
+/* Snackbars must sit above everything, including the feedback overlay (z-index 10000) and the share modal (10050). MudBlazor positions the layer on #mud-snackbar-container via --mud-zindex-snackbar. */
+:root {
+    --mud-zindex-snackbar: 11000;
+}
+
+#mud-snackbar-container {
+    z-index: 11000 !important;
 }
 
 html {
