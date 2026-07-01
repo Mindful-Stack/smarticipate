@@ -44,6 +44,15 @@
                                     {
                                         <span class="sessionCode">@s.SessionCode</span>
                                     }
+                                    <span class="codeCopyGroup">
+                                        <CopyButton Text="@s.SessionCode"
+                                                    Icon="@Icons.Material.Outlined.ContentCopy"
+                                                    Tooltip="Copy code">
+                                            <SuccessMessage>Session <span class="copyEmphasis">code</span> copied to clipboard</SuccessMessage>
+                                        </CopyButton>
+                                        <span class="copySep"></span>
+                                        <ShareLinkButton SessionCode="@s.SessionCode"/>
+                                    </span>
                                     @if (s.IsActive)
                                     {
                                         <span class="liveBadge"><span class="liveDot"></span>Live</span>

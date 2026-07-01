@@ -2,6 +2,7 @@
     --beige: #f2e9e1;
     --dark: #393552;
     --gold: #f6c177;
+    --green: #637b5b;
     --orange: #d7827e;
     --purple: #907aa9;
     --red: #b4637a;
@@ -31,6 +32,32 @@
     padding: 0;
     margin: 0;
     box-sizing: border-box;
+}
+
+/* Emphasised noun ("link" / "code") inside a copy snackbar. Global, not scoped, because the snackbar renders outside component CSS isolation. */
+.copyEmphasis {
+    font-family: var(--ekwarg);
+    font-style: italic;
+    font-weight: bold;
+    text-decoration: underline;
+    text-underline-offset: var(--underline-offest);
+}
+
+/* Copy-code + separator + copy-link cluster, shared by the dashboard rows and the teacher session header. */
+.codeCopyGroup {
+    display: inline-flex;
+    align-items: center;
+    gap: .1rem;
+    margin-left: .5rem;
+    vertical-align: middle;
+}
+
+.copySep {
+    width: 2px;
+    height: 18px;
+    margin: 0 .25rem;
+    background-color: var(--dark);
+    opacity: .3;
 }
 
 html {

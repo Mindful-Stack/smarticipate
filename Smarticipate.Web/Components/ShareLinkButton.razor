@@ -1,0 +1,17 @@
+@inject NavigationManager Navigation
+
+<CopyButton Text="@JoinLink"
+            Icon="@Icons.Material.Outlined.Link"
+            Tooltip="Copy join link"
+            Class="@Class"
+            Size="@Size">
+    <SuccessMessage>Join <span class="copyEmphasis">link</span> copied to clipboard</SuccessMessage>
+</CopyButton>
+
+@code {
+    [Parameter, EditorRequired] public string SessionCode { get; set; } = string.Empty;
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public Size Size { get; set; } = Size.Small;
+
+    private string JoinLink => $"{Navigation.BaseUri}StudentSession?code={Uri.EscapeDataString(SessionCode)}";
+}
