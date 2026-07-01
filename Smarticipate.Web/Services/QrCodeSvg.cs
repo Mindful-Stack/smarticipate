@@ -32,9 +32,9 @@ public static class QrCodeSvg
         }
         sb.Append("\"/>");
 
-        double backing = size * 0.28;
+        double backing = size * 0.31;
         double backingPos = (size - backing) / 2.0;
-        double icon = size * 0.21;
+        double icon = size * 0.24;
         double iconPos = (size - icon) / 2.0;
 
         sb.Append($"<rect x=\"{Inv(backingPos)}\" y=\"{Inv(backingPos)}\" width=\"{Inv(backing)}\" height=\"{Inv(backing)}\" rx=\"1\" ry=\"1\" fill=\"{Light}\" stroke=\"{Dark}\" stroke-width=\"0.4\"/>");
