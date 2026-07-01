@@ -4,6 +4,7 @@
 @inject SessionServices SessionServices
 @inject ResponseServices ResponseServices
 @inject IJSRuntime JS
+@inject ISnackbar Snackbar
 @implements IAsyncDisposable
 
 <PageTitle>Student</PageTitle>
@@ -22,14 +23,15 @@
         else if (_isInSession && ActiveQuestionId.HasValue)
         {
             <div class="activeSessionContainer">
-                <div class="sessionInfo">
+                <div class="sessionInfo actionBar">
                     <div class="sessionHeading">
                         <h2 class="activeSessionTitle">@(string.IsNullOrWhiteSpace(_sessionName) ? _sessionCode : _sessionName)</h2>
                         @if (!string.IsNullOrWhiteSpace(_sessionName))
                         {
-                            <span class="activeSessionCode">@_sessionCode</span>
+                            @CodePill
                         }
                     </div>
+                    <span class="actionBarSep"></span>
                     <button class="leaveSessionBtn" aria-label="Leave session" @onclick="LeaveSession">
                         <MudIcon Icon="@Icons.Material.Outlined.ExitToApp" Size="Size.Small"/>
                         Leave
@@ -72,14 +74,15 @@
         else if (_isInSession || _hasAnswered)
         {
             <div class="activeSessionContainer">
-                <div class="sessionInfo">
+                <div class="sessionInfo actionBar">
                     <div class="sessionHeading">
                         <h2 class="activeSessionTitle">@(string.IsNullOrWhiteSpace(_sessionName) ? _sessionCode : _sessionName)</h2>
                         @if (!string.IsNullOrWhiteSpace(_sessionName))
                         {
-                            <span class="activeSessionCode">@_sessionCode</span>
+                            @CodePill
                         }
                     </div>
+                    <span class="actionBarSep"></span>
                     <button class="leaveSessionBtn" aria-label="Leave session" @onclick="LeaveSession">
                         <MudIcon Icon="@Icons.Material.Outlined.ExitToApp" Size="Size.Small"/>
                         Leave
@@ -104,6 +107,14 @@
                 <button class="submitBtn" @onclick="ResetSession">Join session</button>
             </div>
         }
+        else if (_linkSessionInactive)
+        {
+            <div class="sessionEndedContainer">
+                <h1>This session isn't active right now</h1>
+                <h3 class="participation">Ask your teacher to start it, then try the link again, or enter a code below.</h3>
+                <button class="submitBtn" @onclick="DismissInactiveLink">Enter a code</button>
+            </div>
+        }
         else
         {
             <div class="joinSessionContainer">
@@ -124,9 +135,13 @@
 </div>
 
 @code {
+    [Parameter, SupplyParameterFromQuery(Name = "code")]
+    public string? CodeFromQuery { get; set; }
+
     private bool _isLoading = true;
     private bool _isInSession = false;
     private bool _sessionEnded = false;
+    private bool _linkSessionInactive = false;
     private bool _hasAnswered = false;
     private string _sessionCode = string.Empty;
     private string? _sessionName;
@@ -135,6 +150,24 @@
     private int _countdownTime = 0;
     private string _countdownDisplay = "00:00";
     private string _errorMessage = string.Empty;
+
+    private RenderFragment CodePill => @<button type="button" class="activeSessionCode codeCopyable" title="Copy session code" @onclick="CopyCode">@_sessionCode<MudIcon Icon="@Icons.Material.Outlined.ContentCopy" Style="font-size:1.05rem;margin-left:.25rem;color:var(--dark);"/></button>;
+
+    private readonly RenderFragment _codeCopied = @<text>Session <span class="copyEmphasis">code</span> copied to clipboard</text>;
+
+    private async Task CopyCode()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", _sessionCode);
+            Snackbar.Add(_codeCopied, Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error copying code: {ex.Message}");
+            Snackbar.Add("Couldn't copy", Severity.Error);
+        }
+    }
 
     private int? ActiveQuestionId
     {
@@ -200,9 +233,17 @@
                 LiveSessionServices.OnTeacherDisconnected -= HandleTeacherDisconnected;
                 LiveSessionServices.OnTeacherDisconnected += HandleTeacherDisconnected;
 
-                // A page refresh recreates the whole WASM app, so re-join the session the
-                // student was in (if it's still active) instead of dropping them on the code form.
-                await TryRestoreSessionAsync();
+                // A link takes precedence over the saved session so pasting one in the same tab switches sessions; without one, restore the tab's session across a refresh.
+                if (!string.IsNullOrWhiteSpace(CodeFromQuery))
+                {
+                    await TryJoinFromLinkAsync(CodeFromQuery);
+                    // The code is a one-shot entry instruction; strip it so it can't go stale or re-fire on a later refresh or leave.
+                    Navigation.NavigateTo("/StudentSession", replace: true);
+                }
+                else
+                {
+                    await TryRestoreSessionAsync();
+                }
             }
 
             // Start the heartbeat regardless of connection state; the callback guards on
@@ -291,6 +332,24 @@
         });
     }
 
+    private async Task<bool> JoinActiveSessionAsync(string code, SessionServices.StudentSessionResponse session)
+    {
+        await LiveSessionServices.JoinSession(code);
+        await LiveSessionServices.RegisterAsStudent(code);
+
+        if (!LiveSessionServices.IsConnected)
+        {
+            return false;
+        }
+
+        _sessionCode = code;
+        _sessionName = session.Name;
+        _isInSession = true;
+        _sessionEnded = false;
+        await SaveSessionAsync(code);
+        return true;
+    }
+
     private async Task JoinSession()
     {
         if (string.IsNullOrWhiteSpace(_sessionCode))
@@ -308,20 +367,10 @@
             if (session is not null && session.IsActive)
             {
                 _isLoading = true;
-
-                await LiveSessionServices.JoinSession(_sessionCode);
-                await LiveSessionServices.RegisterAsStudent(_sessionCode);
-
-                if (!LiveSessionServices.IsConnected)
+                if (!await JoinActiveSessionAsync(_sessionCode, session))
                 {
                     _errorMessage = "Connection error. Please try again.";
-                    return;
                 }
-
-                _isInSession = true;
-                _sessionEnded = false;
-                _sessionName = session.Name;
-                await SaveSessionAsync(_sessionCode);
             }
             else
             {
@@ -368,7 +417,6 @@
 
     private const string SessionStorageKey = "smarticipate.student.sessionCode";
 
-    // Re-join the session the student was in after a page refresh, as long as it's still active.
     private async Task TryRestoreSessionAsync()
     {
         try
@@ -380,18 +428,12 @@
             }
 
             var session = await SessionServices.GetSessionStatusByCodeAsync(savedCode);
-            if (session is not null && session.IsActive && LiveSessionServices.IsConnected)
+            if (session is not null && session.IsActive)
             {
-                _sessionCode = savedCode;
-                _sessionName = session.Name;
-                await LiveSessionServices.JoinSession(savedCode);
-                await LiveSessionServices.RegisterAsStudent(savedCode);
-                _isInSession = true;
-                _sessionEnded = false;
+                await JoinActiveSessionAsync(savedCode, session);
             }
             else
             {
-                // Session is gone or ended, so drop the stale code.
                 await ClearSavedSessionAsync();
             }
         }
@@ -399,6 +441,32 @@
         {
             Console.WriteLine($"Error restoring session: {ex.Message}");
         }
+    }
+
+    private async Task TryJoinFromLinkAsync(string code)
+    {
+        _sessionCode = code;
+        try
+        {
+            var session = await SessionServices.GetSessionStatusByCodeAsync(code);
+            if (session is not null && session.IsActive && await JoinActiveSessionAsync(code, session))
+            {
+                return;
+            }
+
+            _linkSessionInactive = true;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error joining from link: {ex.Message}");
+            _linkSessionInactive = true;
+        }
+    }
+
+    private void DismissInactiveLink()
+    {
+        _linkSessionInactive = false;
+        _sessionCode = string.Empty;
     }
 
     private async Task SaveSessionAsync(string code)

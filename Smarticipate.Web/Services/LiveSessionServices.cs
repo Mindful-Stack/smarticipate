@@ -291,7 +291,7 @@ public class LiveSessionServices(IConfiguration configuration) : IAsyncDisposabl
         }
     }
 
-    // Keep reconnecting for a few minutes (not the default ~45s) so a teacher whose connection drops can rejoin before the server drops their students. Mirrors SessionHub.TeacherDisconnectGrace.
+    // Keep reconnecting for a few minutes (not the default ~45s) so a teacher or student whose connection drops can rejoin. Mirrors SessionHub.TeacherDisconnectGrace.
     private sealed class PersistentRetryPolicy : IRetryPolicy
     {
         private static readonly TimeSpan ReconnectWindow = TimeSpan.FromMinutes(3);

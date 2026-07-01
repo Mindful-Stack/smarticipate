@@ -2,6 +2,8 @@
 @inject SessionServices SessionServices
 @inject UserServices UserServices
 @inject NavigationManager Navigation
+@inject IJSRuntime JS
+@inject ISnackbar Snackbar
 
 <PageTitle>My sessions</PageTitle>
 
@@ -42,8 +44,10 @@
                                     @(string.IsNullOrWhiteSpace(s.Name) ? s.SessionCode : s.Name)
                                     @if (!string.IsNullOrWhiteSpace(s.Name))
                                     {
-                                        <span class="sessionCode">@s.SessionCode</span>
+                                        <button type="button" class="sessionCode codeCopyable" title="Copy session code"
+                                                @onclick="() => CopyCode(s.SessionCode)">@s.SessionCode</button>
                                     }
+                                    <ShareButton SessionCode="@s.SessionCode" SessionName="@s.Name"/>
                                     @if (s.IsActive)
                                     {
                                         <span class="liveBadge"><span class="liveDot"></span>Live</span>
@@ -120,6 +124,22 @@
     private string _newName = string.Empty;
     private List<SessionServices.SessionResponse> _sessions = [];
     private readonly Random _random = new();
+
+    private readonly RenderFragment _codeCopied = @<text>Session <span class="copyEmphasis">code</span> copied to clipboard</text>;
+
+    private async Task CopyCode(string code)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", code);
+            Snackbar.Add(_codeCopied, Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error copying code: {ex.Message}");
+            Snackbar.Add("Couldn't copy", Severity.Error);
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {

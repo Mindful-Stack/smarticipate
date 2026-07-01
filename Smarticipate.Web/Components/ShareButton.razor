@@ -1,0 +1,76 @@
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+@inject ISnackbar Snackbar
+
+<MudTooltip Text="Share session">
+    <MudIconButton Class="shareTrigger"
+                   Color="Color.Dark"
+                   Icon="@Icons.Material.Outlined.Share"
+                   Size="@Size"
+                   aria-label="Share session"
+                   OnClick="Open"/>
+</MudTooltip>
+
+@if (_open)
+{
+    <div class="shareBackdrop" @onclick="Close">
+        <div class="shareCard" @onclick:stopPropagation="true">
+            <div class="shareHeader">Share session</div>
+            <div class="shareBody">
+                <p class="shareName">@DisplayName</p>
+                <div class="shareQr">@((MarkupString)_svg)</div>
+                <div class="shareActions">
+                    <button class="shareBtn" @onclick="CopyCode">
+                        <MudIcon Icon="@Icons.Material.Outlined.ContentCopy" Size="Size.Small"/>
+                        Copy code
+                    </button>
+                    <button class="shareBtn" @onclick="CopyLink">
+                        <MudIcon Icon="@Icons.Material.Outlined.Link" Size="Size.Small"/>
+                        Copy link
+                    </button>
+                </div>
+                <button class="shareClose" @onclick="Close">Close</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public string SessionCode { get; set; } = string.Empty;
+    [Parameter] public string? SessionName { get; set; }
+    [Parameter] public Size Size { get; set; } = Size.Small;
+
+    private bool _open;
+    private string _svg = string.Empty;
+
+    private string DisplayName => string.IsNullOrWhiteSpace(SessionName) ? SessionCode : SessionName!;
+    private string JoinLink => $"{Navigation.BaseUri}StudentSession?code={Uri.EscapeDataString(SessionCode)}";
+
+    private readonly RenderFragment _codeCopied = @<text>Session <span class="copyEmphasis">code</span> copied to clipboard</text>;
+    private readonly RenderFragment _linkCopied = @<text>Join <span class="copyEmphasis">link</span> copied to clipboard</text>;
+
+    private void Open()
+    {
+        _svg = QrCodeSvg.ForLink(JoinLink);
+        _open = true;
+    }
+
+    private void Close() => _open = false;
+
+    private Task CopyCode() => CopyAsync(SessionCode, _codeCopied);
+    private Task CopyLink() => CopyAsync(JoinLink, _linkCopied);
+
+    private async Task CopyAsync(string text, RenderFragment message)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", text);
+            Snackbar.Add(message, Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error copying to clipboard: {ex.Message}");
+            Snackbar.Add("Couldn't copy", Severity.Error);
+        }
+    }
+}

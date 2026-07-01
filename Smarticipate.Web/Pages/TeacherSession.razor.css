@@ -64,7 +64,7 @@
 
 .activeSessionContainer {
     display: grid;
-    grid-template-rows: 2rem auto;
+    grid-template-rows: max-content auto;
     align-self: start;
     padding: 2rem 0 0 2.5rem;
     width: 100%;
@@ -89,14 +89,6 @@
 .activeSessionTitle {
     text-decoration: underline;
     text-underline-offset: var(--underline-offest);
-}
-
-.activeSessionCode {
-    font-family: var(--inter);
-    font-size: .95rem;
-    font-weight: normal;
-    color: var(--purple);
-    opacity: .9;
 }
 
 .timer {
