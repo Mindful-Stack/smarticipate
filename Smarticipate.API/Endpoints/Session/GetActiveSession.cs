@@ -27,22 +27,16 @@ public class GetActiveSession : IEndpoint
         DateTime? StartTime,
         string UserId,
         bool IsActive,
-        List<QuestionDto> Questions
+        List<ActivationDto> Activations
         );
-    
-    public record QuestionDto(
+
+    public record ActivationDto(
         int Id,
-        int QuestionNumber,
-        DateTime? StartTime,
-        DateTime? EndTime,
-        int SessionId,
-        List<ResponseDto> Responses
-    );
-    
-    public record ResponseDto(
-        int Id,
-        ResponseOption SelectedOption,
-        DateTime TimeStamp
+        int Position,
+        QuestionType Type,
+        string Prompt,
+        DateTime StartTime,
+        DateTime? EndTime
     );
 
     private static async Task<IResult> Handle(
@@ -55,8 +49,8 @@ public class GetActiveSession : IEndpoint
         if (callerId != userId) return Results.Forbid();
 
         var session = await db.Sessions
-            .Include(s => s.Questions)
-            .ThenInclude(q => q.Responses)
+            .Include(s => s.Activations)
+            .ThenInclude(a => a.Definition)
             .Where(s => s.UserId == userId && s.EndTime == null)
             .OrderByDescending(s => s.StartTime)
             .FirstOrDefaultAsync();
@@ -65,7 +59,12 @@ public class GetActiveSession : IEndpoint
         {
             return Results.NotFound();
         }
-        
+
+        var ordered = session.Activations.OrderBy(a => a.Id).ToList();
+        var activations = ordered
+            .Select((a, i) => new ActivationDto(a.Id, i + 1, a.Definition.Type, a.Definition.Prompt, a.StartTime, a.EndTime))
+            .ToList();
+
         var response = new ActiveSessionResponse(
             session.Id,
             session.SessionCode,
@@ -73,18 +72,7 @@ public class GetActiveSession : IEndpoint
             session.StartTime,
             session.UserId,
             true,
-            session.Questions.Select(q => new QuestionDto(
-                q.Id, 
-                q.QuestionNumber, 
-                q.StartTime,
-                q.EndTime,
-                q.SessionId,
-                q.Responses.Select(r => new ResponseDto(
-                    r.Id,
-                    (ResponseOption)r.SelectedOption,
-                    r.TimeStamp
-                )).ToList()
-            )).ToList()
+            activations
         );
 
         return Results.Ok(response);

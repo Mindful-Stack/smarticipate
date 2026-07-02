@@ -7,6 +7,7 @@ using Scalar.AspNetCore;
 using Smarticipate.API.Data.Identity;
 using Smarticipate.API.Endpoints;
 using Smarticipate.API.Hubs;
+using Smarticipate.API.QuestionTypes;
 using Smarticipate.API.Services;
 using JsonOptions = Microsoft.AspNetCore.Http.Json.JsonOptions;
 
@@ -105,6 +106,9 @@ builder.Services.AddSignalR(options =>
 builder.Services.AddSingleton<LiveFeedbackStore>();
 builder.Services.AddHostedService<FeedbackSnapshotService>();
 
+// Question-type handlers + registry (reflection-registered singletons).
+builder.Services.AddQuestionTypeHandlers();
+
 var app = builder.Build();
 
 app.UseCors();
@@ -152,4 +156,14 @@ app.MapEndpoints<Program>();
 
 app.MapHub<SessionHub>("/sessionHub");
 
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<UserDbContext>();
+    await db.Database.MigrateAsync(); // ensure the schema exists before the seeder queries it
+    await SystemQuestionSeeder.SeedAsync(db);
+}
+
 app.Run();
+
+// Exposed so WebApplicationFactory can reference the entry point from the test project.
+public partial class Program { }

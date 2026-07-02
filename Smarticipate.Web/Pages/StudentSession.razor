@@ -2,7 +2,6 @@
 @inject NavigationManager Navigation
 @inject LiveSessionServices LiveSessionServices
 @inject SessionServices SessionServices
-@inject ResponseServices ResponseServices
 @inject IJSRuntime JS
 @inject ISnackbar Snackbar
 @implements IAsyncDisposable
@@ -39,30 +38,6 @@
                 </div>
             </div>
             <div class="questionContainer">
-                <h1>Choose your response (Question #@CurrentQuestionNumber)</h1>
-                <div class="responseOptions">
-                    <button id="tooSlow" class="responseBtn tooSlow"
-                            @onclick="() => SubmitResponse(ResponseOption.TooSlow)"
-                            disabled="@_hasAnswered">
-                        <img class="responseBtnImage" src="images/sloth.svg" alt="Too slow - sloth"/>
-                        <p class="optionText">We're moving slower than a herd of sloths stampeding through peanut
-                            butter! Let's pick it up!</p>
-                    </button>
-                    <button id="perfect" class="responseBtn perfect"
-                            @onclick="() => SubmitResponse(ResponseOption.Perfect)"
-                            disabled="@_hasAnswered">
-                        <img class="responseBtnImage" src="images/metronome.svg" alt="Perfect - metronome"/>
-                        <p class="optionText">I’m in a groove, right now!</p>
-                    </button>
-                    <button id="tooFast" class="responseBtn tooFast"
-                            @onclick="() => SubmitResponse(ResponseOption.TooFast)"
-                            disabled="@_hasAnswered">
-                        <img class="responseBtnImage" src="images/cheetah.svg"
-                             alt="Too fast - cheetah"/>
-                        <p class="optionText">Even cheetahs need to pace themselves. Let's take a breather.</p>
-                    </button>
-
-                </div>
                 <div class="countdown">
                     <MudProgressCircular Class="progressCircle"
                                          Color="@(_countdownTime < 20 ? (_countdownTime < 10 ? Color.Error : Color.Tertiary) : Color.Dark)"
@@ -71,7 +46,7 @@
                 </div>
             </div>
         }
-        else if (_isInSession || _hasAnswered)
+        else if (_isInSession)
         {
             <div class="activeSessionContainer">
                 <div class="sessionInfo actionBar">
@@ -90,10 +65,6 @@
                 </div>
             </div>
             <div class="waitingContainer">
-                @if (_hasAnswered)
-                {
-                    <h3>Thank you for your answer!</h3>
-                }
                 <h1>Waiting for next question...</h1>
                 <img class="logo" src="images/smarticipate-logo.png"/>
 
@@ -142,11 +113,9 @@
     private bool _isInSession = false;
     private bool _sessionEnded = false;
     private bool _linkSessionInactive = false;
-    private bool _hasAnswered = false;
     private string _sessionCode = string.Empty;
     private string? _sessionName;
     private int? _activeQuestionId;
-    private int _currentQuestionNumber;
     private int _countdownTime = 0;
     private string _countdownDisplay = "00:00";
     private string _errorMessage = string.Empty;
@@ -177,19 +146,6 @@
             if (_activeQuestionId != value)
             {
                 _activeQuestionId = value;
-                InvokeAsync(StateHasChanged);
-            }
-        }
-    }
-
-    private int CurrentQuestionNumber
-    {
-        get => _currentQuestionNumber;
-        set
-        {
-            if (_currentQuestionNumber != value)
-            {
-                _currentQuestionNumber = value;
                 InvokeAsync(StateHasChanged);
             }
         }
@@ -262,21 +218,9 @@
 
     private void HandleQuestionStarted(int questionId, int duration, int remainingTime)
     {
-        InvokeAsync(async () =>
+        InvokeAsync(() =>
         {
-            ActiveQuestionId = null;
-            StateHasChanged();
-
             ActiveQuestionId = questionId;
-
-            if (!string.IsNullOrEmpty(_sessionCode))
-            {
-                var sessionResponse = await SessionServices.GetSessionStatusByCodeAsync(_sessionCode);
-                var question = sessionResponse?.Questions.FirstOrDefault(q => q.Id == questionId);
-                CurrentQuestionNumber = question?.QuestionNumber ?? 0;
-            }
-
-            _hasAnswered = false;
             CountdownTime = remainingTime;
             StateHasChanged();
         });
@@ -287,7 +231,6 @@
         InvokeAsync(() =>
         {
             ActiveQuestionId = null;
-            _hasAnswered = false;
             _countdownDisplay = "00:00";
             StateHasChanged();
         });
@@ -490,17 +433,6 @@
         catch (Exception ex)
         {
             Console.WriteLine($"Error clearing saved session: {ex.Message}");
-        }
-    }
-
-    private async Task SubmitResponse(ResponseOption option)
-    {
-        if (ActiveQuestionId.HasValue && !_hasAnswered)
-        {
-            await ResponseServices.CreateResponseAsync(ActiveQuestionId.Value, option);
-            _hasAnswered = true;
-            ActiveQuestionId = null;
-            StateHasChanged();
         }
     }
 

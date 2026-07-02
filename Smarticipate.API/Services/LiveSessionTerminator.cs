@@ -5,9 +5,9 @@ using Smarticipate.API.Hubs;
 
 namespace Smarticipate.API.Services;
 
-// Releases the live state of a session that has ended (or just been auto-closed in
-// the DB): writes a final snapshot, clears the in-memory feedback, dismisses any open
-// questions so they don't carry into a later run, and tells connected clients it ended.
+// Releases the live state of a session that has ended (or just been auto-closed in the DB):
+// writes a final snapshot, clears in-memory feedback, dismisses open questions, closes open
+// activations so late answers cannot land, and tells connected clients it ended.
 public static class LiveSessionTerminator
 {
     public static async Task EndAsync(
@@ -20,20 +20,24 @@ public static class LiveSessionTerminator
         store.Reset(sessionCode);
         SessionHub.DropActiveQuestion(sessionCode);
 
-        // Questions belong to a single run — close them out when the session ends.
+        // A run's questions and activations belong to that run; close them out when the session ends.
         var session = await db.Sessions
             .Include(s => s.StudentQuestions)
+            .Include(s => s.Activations)
             .OrderByDescending(s => s.StartTime)
             .FirstOrDefaultAsync(s => s.SessionCode == sessionCode);
         if (session is not null)
         {
-            var open = session.StudentQuestions.Where(q => q.DismissedAt == null).ToList();
-            if (open.Count > 0)
-            {
-                foreach (var q in open)
-                    q.DismissedAt = DateTime.Now;
+            var openQuestions = session.StudentQuestions.Where(q => q.DismissedAt == null).ToList();
+            foreach (var q in openQuestions)
+                q.DismissedAt = DateTime.Now; // unchanged from today
+
+            var openActivations = session.Activations.Where(a => a.EndTime == null).ToList();
+            foreach (var a in openActivations)
+                a.EndTime = DateTime.UtcNow; // new timestamps are UTC (design decision)
+
+            if (openQuestions.Count > 0 || openActivations.Count > 0)
                 await db.SaveChangesAsync();
-            }
         }
 
         await hub.Clients.Group(sessionCode).SendAsync("SessionEnded");
