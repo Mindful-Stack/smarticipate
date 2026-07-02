@@ -164,3 +164,6 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.Run();
+
+// Exposed so WebApplicationFactory can reference the entry point from the test project.
+public partial class Program { }
