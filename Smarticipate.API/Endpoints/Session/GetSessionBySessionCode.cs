@@ -1,4 +1,4 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Smarticipate.API.Data.Identity;
@@ -26,24 +26,17 @@ public class GetSessionBySessionCode : IEndpoint
         DateTime? EndTime,
         string UserId,
         bool IsActive,
-        List<QuestionDto> Questions
+        List<ActivationDto> Activations
     );
-           
-    public record QuestionDto(
+
+    public record ActivationDto(
         int Id,
-        int QuestionNumber,
-        DateTime? StartTime,
-        DateTime? EndTime,
-        int SessionId,
-        List<ResponseDto> Responses
+        int Position,
+        Smarticipate.Core.QuestionType Type,
+        string Prompt,
+        DateTime StartTime,
+        DateTime? EndTime
     );
-    
-    public record ResponseDto(
-        int Id,
-        ResponseOption SelectedOption,
-        DateTime TimeStamp,
-        int QuestionId
-    );            
 
     private static async Task<IResult> Handle(
         string sessionCode,
@@ -55,14 +48,19 @@ public class GetSessionBySessionCode : IEndpoint
         if (string.IsNullOrEmpty(userId)) return Results.Unauthorized();
 
         var session = await db.Sessions
-            .Include(s => s.Questions)
-            .ThenInclude(q => q.Responses)
+            .Include(s => s.Activations)
+            .ThenInclude(a => a.Definition)
             .FirstOrDefaultAsync(s => s.SessionCode == sessionCode);
 
         if (session is null || session.UserId != userId)
         {
             return Results.NotFound();
         }
+
+        var ordered = session.Activations.OrderBy(a => a.Id).ToList();
+        var activations = ordered
+            .Select((a, i) => new ActivationDto(a.Id, i + 1, a.Definition.Type, a.Definition.Prompt, a.StartTime, a.EndTime))
+            .ToList();
 
         var response = new SessionResponse(
             session.Id,
@@ -71,19 +69,7 @@ public class GetSessionBySessionCode : IEndpoint
             session.EndTime,
             session.UserId,
             session.EndTime == null,
-            session.Questions.Select(q => new QuestionDto(
-                q.Id, 
-                q.QuestionNumber, 
-                q.StartTime,
-                q.EndTime,
-                q.SessionId,
-                q.Responses.Select(r => new ResponseDto(
-                    r.Id, 
-                    (ResponseOption)r.SelectedOption, 
-                    r.TimeStamp,
-                    r.QuestionId
-                    )).ToList()
-                )).ToList()
+            activations
         );
 
         return Results.Ok(response);
