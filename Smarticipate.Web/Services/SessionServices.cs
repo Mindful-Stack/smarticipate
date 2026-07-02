@@ -193,7 +193,7 @@ public class SessionServices(IHttpClientFactory httpClientFactory) : IService
         public DateTime? StartTime { get; set; }
         public string UserId { get; set; }
         public bool IsActive { get; set; }
-        public List<QuestionDto> Questions { get; set; }
+        public List<ActivationDto> Activations { get; set; } = new();
     }
 
     public record SessionResponse
@@ -204,25 +204,18 @@ public class SessionServices(IHttpClientFactory httpClientFactory) : IService
         public DateTime? StartTime { get; set; }
         public DateTime? EndTime { get; set; }
         public bool IsActive { get; set; }
-        public List<QuestionDto> Questions { get; set; }
+        public List<ActivationDto> Activations { get; set; } = new();
     }
 
-    public record QuestionDto
+    // Mirrors the API ActivationDto on the session read endpoints. Only the fields the Web reads.
+    public record ActivationDto
     {
         public int Id { get; set; }
-        public int QuestionNumber { get; set; }
-        public DateTime? StartTime { get; set; }
+        public int Position { get; set; }
+        public QuestionType Type { get; set; }
+        public string Prompt { get; set; }
+        public DateTime StartTime { get; set; }
         public DateTime? EndTime { get; set; }
-        public int SessionId { get; set; }
-        public List<ResponseDto> Responses { get; set; } = new();
-    }
-
-    public record ResponseDto
-    {
-        public int Id { get; set; }
-        public ResponseOption SelectedOption { get; set; }
-        public DateTime TimeStamp { get; set; }
-        public int QuestionId { get; set; }
     }
 
     public record StudentSessionResponse
@@ -231,12 +224,13 @@ public class SessionServices(IHttpClientFactory httpClientFactory) : IService
         public string SessionCode { get; set; }
         public string? Name { get; set; }
         public bool IsActive { get; set; }
-        public List<StudentQuestionDto> Questions { get; set; } = new();
+        public List<StatusActivationDto> Activations { get; set; } = new();
     }
 
-    public record StudentQuestionDto
+    // Mirrors the anonymous GetSessionStatus ActivationDto (Id, Position only).
+    public record StatusActivationDto
     {
         public int Id { get; set; }
-        public int QuestionNumber { get; set; }
+        public int Position { get; set; }
     }
 }

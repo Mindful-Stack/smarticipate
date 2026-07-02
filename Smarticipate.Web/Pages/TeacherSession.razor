@@ -1,7 +1,6 @@
 ﻿@page "/TeacherSession"
 @inject SessionServices SessionServices
 @inject UserServices UserServices
-@inject QuestionServices QuestionServices
 @inject LiveSessionServices LiveSessionServices
 @inject NavigationManager Navigation
 @implements IAsyncDisposable
@@ -34,41 +33,6 @@
                                 <MudIcon Icon="@Icons.Material.Outlined.StopCircle" Size="Size.Small"/>
                                 Stop
                             </button>
-                        </div>
-                        <div class="timer">
-                            <div class="timerSetup">
-                                <h1 class="questionTimer">Question timer</h1>
-                                <input class="timerInput" type="number" min="0" @bind="@_inputCountdownTime">
-                                <button class="submitBtn btnWithIcon"
-                                        @onclick="ToggleQuestionCountdown">
-                                    <MudIcon Icon="@Icons.Material.Outlined.Timer" Style="width: 40px;"/>
-                                    @(_isTimerOn ? "Stop" : "Start")
-                                </button>
-                            </div>
-                            <div class="countdown">
-                                <MudProgressCircular Class="progressCircle"
-                                                     Color="@(_countdownTime < 20 ? (_countdownTime < 10 ? Color.Error : Color.Tertiary) : Color.Dark)"
-                                                     Style="width: 150px; height: 150px;" Value="@_progressPercentage"/>
-                                <h1 class="countDownRest">@_countdownDisplay</h1>
-                            </div>
-                            <div class="responseChartContainer">
-                                <h3>Latest Question Responses:</h3>
-                                @if (_showResponseChart && _responseSeries.Any())
-                                {
-                                    <MudChart ChartType="ChartType.Bar"
-                                              ChartSeries="@_responseSeries"
-                                              XAxisLabels="@_responseLabels"
-                                              Width="@_chartWidth"
-                                              Height="@_chartHeight"
-                                              ChartOptions="@_chartOptions">
-                                        <CustomGraphics>
-                                            <text x="105" y="105%" class="tooSlow count">@_tooSlowCount</text>
-                                            <text x="348" y="105%" class="perfect count">@_perfectCount</text>
-                                            <text x="590" y="105%" class="tooFast count">@_tooFastCount</text>
-                                        </CustomGraphics>
-                                    </MudChart>
-                                }
-                            </div>
                         </div>
                     </div>
                     <div class="studentCount">
@@ -115,40 +79,9 @@
         }
     }
 
-    //TIMER
-    private bool _isTimerOn;
-    private int _inputCountdownTime = 60;
-    private int _countdownTime = 60;
-    private string _countdownDisplay = "00:00";
-    private int _initialCountdownTime;
-    private double _progressPercentage = 100;
-    private Timer? _countdownTimer;
-
     //HEARTBEAT
     private Timer? _heartbeatTimer;
     private readonly int _heartbeatInterval = 15000;
-
-    //CHART
-    private bool _showResponseChart = false;
-    private List<ChartSeries> _responseSeries = new();
-    private string[] _responseLabels = { "Too Slow", "Perfect", "Too Fast" };
-    private string _chartHeight = "280px";
-    private string _chartWidth = "100%";
-
-    private ChartOptions _chartOptions = new()
-    {
-        InterpolationOption = InterpolationOption.NaturalSpline,
-        ChartPalette = new string[] { "var(--orange)", "var(--teal)", "var(--red)" },
-        ShowToolTips = true,
-        YAxisLines = true,
-        XAxisLines = true,
-
-        LineStrokeWidth = 2
-    };
-
-    private int _tooFastCount = 0;
-    private int _perfectCount = 0;
-    private int _tooSlowCount = 0;
 
     protected override async Task OnInitializedAsync()
     {
@@ -181,7 +114,6 @@
             Navigation.NavigateTo("/TeacherSession", replace: true);
         }
 
-        await CloseActiveQuestionsAsync();
         StartHeartbeatTimer();
     }
 
@@ -238,184 +170,7 @@
         {
             _isInSession = false;
             _sessionCode = string.Empty;
-            await StopQuestionCountdown();
             Navigation.NavigateTo("/Dashboard");
-        }
-    }
-
-    private async Task StartQuestionCountdown()
-    {
-        _countdownTime = _inputCountdownTime;
-        _initialCountdownTime = _inputCountdownTime;
-        _countdownDisplay = TimeSpan.FromSeconds(_countdownTime).ToString(@"mm\:ss");
-        _isTimerOn = true;
-        _progressPercentage = 100;
-
-        if (!string.IsNullOrEmpty(_sessionCode))
-        {
-            var success = await QuestionServices.CreateQuestionAsync(_sessionCode);
-            if (success)
-            {
-                var latestQuestion = await GetLatestQuestionAsync();
-                if (latestQuestion is not null)
-                {
-                    await LiveSessionServices.StartQuestion(latestQuestion.Id, _initialCountdownTime);
-                }
-            }
-            else
-            {
-                Console.WriteLine("Failed to create question");
-            }
-        }
-
-        _countdownTimer?.Dispose();
-        _countdownTimer = new Timer(
-            async _ =>
-            {
-                try
-                {
-                    if (_countdownTime > 0)
-                    {
-                        _countdownTime--;
-                        _countdownDisplay = TimeSpan.FromSeconds(_countdownTime).ToString(@"mm\:ss");
-                        _progressPercentage = ((double)_countdownTime / _initialCountdownTime) * 100;
-
-                        // Push remaining time to students every 5s (and every second under 10s).
-                        if (_countdownTime % 5 == 0 || _countdownTime <= 10)
-                        {
-                            await LiveSessionServices.UpdateRemainingTime(_countdownTime);
-                        }
-
-                        await InvokeAsync(StateHasChanged);
-                    }
-                    else
-                    {
-                        if (!string.IsNullOrEmpty(_sessionCode))
-                        {
-                            await CloseLatestQuestionAsync();
-                        }
-
-                        _countdownTimer?.Dispose();
-                        _countdownTimer = null;
-                        _isTimerOn = false;
-                        await InvokeAsync(StateHasChanged);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Countdown tick error: {ex.Message}");
-                }
-            },
-            null,
-            0,
-            1000
-        );
-    }
-
-    private async Task StopQuestionCountdown()
-    {
-        _countdownTimer?.Dispose();
-        _isTimerOn = false;
-        _countdownDisplay = "00:00";
-        _progressPercentage = 100;
-
-        if (!string.IsNullOrEmpty(_sessionCode))
-        {
-            await CloseLatestQuestionAsync();
-        }
-    }
-
-    // Latest question (highest QuestionNumber) for the current session, or null.
-    private async Task<SessionServices.QuestionDto?> GetLatestQuestionAsync()
-    {
-        if (string.IsNullOrEmpty(_sessionCode))
-            return null;
-
-        var session = await SessionServices.GetSessionByCodeAsync(_sessionCode);
-        return session?.Questions?
-            .OrderByDescending(q => q.QuestionNumber)
-            .FirstOrDefault();
-    }
-
-    // Close the latest open question (if any), refresh the response chart, and notify students.
-    private async Task CloseLatestQuestionAsync()
-    {
-        var latestQuestion = await GetLatestQuestionAsync();
-        if (latestQuestion is not null && !latestQuestion.EndTime.HasValue)
-        {
-            await QuestionServices.UpdateQuestionEndTimeAsync(latestQuestion.Id, DateTime.Now);
-            await GetResponsesForLatestQuestionAsync();
-        }
-
-        await LiveSessionServices.StopQuestion();
-    }
-
-    private Task ToggleQuestionCountdown()
-        => _isTimerOn ? StopQuestionCountdown() : StartQuestionCountdown();
-
-    private async Task CloseActiveQuestionsAsync()
-    {
-        if (!string.IsNullOrEmpty(_sessionCode))
-        {
-            try
-            {
-                var session = await SessionServices.GetSessionByCodeAsync(_sessionCode);
-                if (session?.Questions?.Any() == true)
-                {
-                    var activeQuestions = session.Questions
-                        .Where(q => q.StartTime.HasValue && !q.EndTime.HasValue)
-                        .ToList();
-
-                    foreach (var question in activeQuestions)
-                    {
-                        await QuestionServices.UpdateQuestionEndTimeAsync(question.Id, DateTime.Now);
-                        await LiveSessionServices.StopQuestion();
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error closing active questions: {ex.Message}");
-            }
-        }
-    }
-
-    private async Task GetResponsesForLatestQuestionAsync()
-    {
-        try
-        {
-            var latestQuestion = await GetLatestQuestionAsync();
-            if (latestQuestion is null)
-                return;
-
-            _tooSlowCount = latestQuestion.Responses.Count(r => r.SelectedOption == ResponseOption.TooSlow);
-            _perfectCount = latestQuestion.Responses.Count(r => r.SelectedOption == ResponseOption.Perfect);
-            _tooFastCount = latestQuestion.Responses.Count(r => r.SelectedOption == ResponseOption.TooFast);
-
-            _responseSeries = new List<ChartSeries>
-            {
-                new ChartSeries
-                {
-                    Name = "Too Slow",
-                    Data = new double[] { _tooSlowCount, 0, 0 },
-                },
-                new ChartSeries
-                {
-                    Name = "Perfect",
-                    Data = new double[] { 0, _perfectCount, 0 },
-                },
-                new ChartSeries
-                {
-                    Name = "Too Fast",
-                    Data = new double[] { 0, 0, _tooFastCount },
-                }
-            };
-            _showResponseChart = true;
-            StateHasChanged();
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error getting responses: {ex.Message}");
         }
     }
 
@@ -426,36 +181,11 @@
         _heartbeatTimer?.Dispose();
         _heartbeatTimer = null;
 
-        if (_isInSession && _isTimerOn)
-        {
-            await StopQuestionCountdown();
-        }
-
-        if (_countdownTimer is not null)
-        {
-            _countdownTimer.Dispose();
-            _countdownTimer = null;
-        }
-
         if (_isInSession && !string.IsNullOrEmpty(_sessionCode))
         {
             try
             {
-                var session = await SessionServices.GetSessionByCodeAsync(_sessionCode);
-                if (session?.Questions?.Any() == true)
-                {
-                    var activeQuestions = session.Questions
-                        .Where(q => q.StartTime.HasValue && !q.EndTime.HasValue)
-                        .ToList();
-
-                    foreach (var question in activeQuestions)
-                    {
-                        await QuestionServices.UpdateQuestionEndTimeAsync(question.Id, DateTime.Now);
-                    }
-                }
-
-                // Only leave the SignalR group on dispose. Do NOT end the session here:
-                // a reload/navigation must keep the session alive (ending is the Stop button only).
+                // Only leave the SignalR group on dispose. Do NOT end the session here: a reload/navigation must keep the session alive (ending is the Stop button only).
                 await LiveSessionServices.LeaveSession();
             }
             catch (Exception ex)
@@ -479,7 +209,6 @@
                     catch (Exception ex)
                     {
                         Console.WriteLine($"Heartbeat error: {ex.Message}");
-                        await CloseActiveQuestionsAsync();
                     }
                 }
             }, null, _heartbeatInterval, _heartbeatInterval
